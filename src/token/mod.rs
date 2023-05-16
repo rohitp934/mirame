@@ -1,5 +1,5 @@
 // src/token/mod.rs
-type TokenType = String;
+pub type TokenType = String;
 
 pub struct Token {
     pub _type: TokenType,
@@ -7,27 +7,27 @@ pub struct Token {
 }
 
 // Terminal tokens
-const ILLEGAL: String = String::from("ILLEGAL");
-const EOF: String = String::from("EOF");
+pub const ILLEGAL: &str = "ILLEGAL";
+pub const EOF: &str = "EOF";
 
 // Identifiers + literals
-const IDENTIFIER: String = String::from("IDENTIFIER"); // add, foobar, x, y, ...
-const INT: String = String::from("INT"); // 1343456
+pub const IDENTIFIER: &str = "IDENTIFIER"; // add, foobar, x, y, ...
+pub const INT: &str = "INT"; // 1343456
 
 // Keywords
-const FUNCTION: String = String::from("FUNCTION"); // fn
-const LET: String = String::from("LET"); // let
-const RETURN: String = String::from("RETURN"); // return
+pub const FUNCTION: &str = "FUNCTION"; // fn
+pub const LET: &str = "LET"; // let
+pub const RETURN: &str = "RETURN"; // return
 
 // Operators
-const ASSIGN: String = String::from("ASSIGN"); // =
-const PLUS: String = String::from("PLUS"); // +
-const MINUS: String = String::from("MINUS"); // -
+pub const ASSIGN: &str = "ASSIGN"; // =
+pub const PLUS: &str = "PLUS"; // +
+pub const MINUS: &str = "MINUS"; // -
 
 // Delimiters
-const LPAREN: String = String::from("LPAREN"); // (
-const RPAREN: String = String::from("RPAREN"); // )
-const LBRACE: String = String::from("LBRACE"); // {
-const RBRACE: String = String::from("RBRACE"); // }
-const COMMA: String = String::from("COMMA"); // ,
-const SEMICOLON: String = String::from("SEMICOLON"); // ;
+pub const LPAREN: &str = "LPAREN"; // (
+pub const RPAREN: &str = "RPAREN"; //
+pub const LBRACE: &str = "LBRACE"; // {
+pub const RBRACE: &str = "RBRACE"; // }
+pub const COMMA: &str = "COMMA"; // ,
+pub const SEMICOLON: &str = "SEMICOLON"; // ;
