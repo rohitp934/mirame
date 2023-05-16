@@ -36,6 +36,8 @@ impl Lexer {
     fn next_token(&mut self) -> token::Token {
         let tok: token::Token;
 
+        self.skip_whitespace();
+
         match self.ch {
             '=' => tok = new_token(token::ASSIGN, self.ch),
             '+' => tok = new_token(token::PLUS, self.ch),
@@ -47,12 +49,67 @@ impl Lexer {
             '{' => tok = new_token(token::LBRACE, self.ch),
             '}' => tok = new_token(token::RBRACE, self.ch),
             '\0' => tok = new_token(token::EOF, self.ch),
-            _ => tok = new_token(token::ILLEGAL, self.ch),
+            _ => {
+                if is_letter(self.ch) {
+                    let literal = self.read_identifier();
+                    tok = token::Token {
+                        _type: token::lookup_identifier(literal.as_str()),
+                        literal,
+                    };
+                    return tok;
+                } else if is_digit(self.ch) {
+                    tok = token::Token {
+                        _type: token::INT,
+                        literal: self.read_number(),
+                    };
+                    return tok;
+                } else {
+                    tok = new_token(token::ILLEGAL, self.ch);
+                }
+            }
         }
 
         self.read_char();
         tok
     }
+
+    fn read_identifier(&mut self) -> String {
+        let pos = self.position;
+        while is_letter(self.ch) {
+            self.read_char();
+        }
+        // Return string from pos to self.position
+        self.input[pos..self.position].to_string()
+    }
+
+    fn read_number(&mut self) -> String {
+        let pos = self.position;
+        while is_digit(self.ch) {
+            self.read_char();
+        }
+        // Return string from pos to self.position
+        self.input[pos..self.position].to_string()
+    }
+
+    fn skip_whitespace(&mut self) {
+        while self.ch == ' ' || self.ch == '\r' || self.ch == '\n' || self.ch == '\t' {
+            self.read_char();
+        }
+    }
+}
+
+fn is_letter(ch: char) -> bool {
+    if 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z' {
+        return true;
+    }
+    false
+}
+
+fn is_digit(ch: char) -> bool {
+    if '0' <= ch && ch <= '9' {
+        return true;
+    }
+    false
 }
 
 fn new_token(tok: token::TokenType, ch: char) -> token::Token {
@@ -70,20 +127,88 @@ mod lexer_test {
 
     #[test]
     fn test_next_token() {
-        let input = "=+(){},;";
+        let input = "let five = 5;
+
+let ten = 10;
+
+let add = fn(x, y) {
+  return x + y;
+};
+
+let result = add(five, ten);";
 
         let tests = [
+            Token {
+                _type: token::LET,
+                literal: "let".to_string(),
+            },
+            Token {
+                _type: token::IDENTIFIER,
+                literal: "five".to_string(),
+            },
             Token {
                 _type: token::ASSIGN,
                 literal: "=".to_string(),
             },
             Token {
-                _type: token::PLUS,
-                literal: "+".to_string(),
+                _type: token::INT,
+                literal: "5".to_string(),
+            },
+            Token {
+                _type: token::SEMICOLON,
+                literal: ";".to_string(),
+            },
+            Token {
+                _type: token::LET,
+                literal: "let".to_string(),
+            },
+            Token {
+                _type: token::IDENTIFIER,
+                literal: "ten".to_string(),
+            },
+            Token {
+                _type: token::ASSIGN,
+                literal: "=".to_string(),
+            },
+            Token {
+                _type: token::INT,
+                literal: "10".to_string(),
+            },
+            Token {
+                _type: token::SEMICOLON,
+                literal: ";".to_string(),
+            },
+            Token {
+                _type: token::LET,
+                literal: "let".to_string(),
+            },
+            Token {
+                _type: token::IDENTIFIER,
+                literal: "add".to_string(),
+            },
+            Token {
+                _type: token::ASSIGN,
+                literal: "=".to_string(),
+            },
+            Token {
+                _type: token::FUNCTION,
+                literal: "fn".to_string(),
             },
             Token {
                 _type: token::LPAREN,
                 literal: "(".to_string(),
+            },
+            Token {
+                _type: token::IDENTIFIER,
+                literal: "x".to_string(),
+            },
+            Token {
+                _type: token::COMMA,
+                literal: ",".to_string(),
+            },
+            Token {
+                _type: token::IDENTIFIER,
+                literal: "y".to_string(),
             },
             Token {
                 _type: token::RPAREN,
@@ -94,12 +219,68 @@ mod lexer_test {
                 literal: "{".to_string(),
             },
             Token {
+                _type: token::RETURN,
+                literal: "return".to_string(),
+            },
+            Token {
+                _type: token::IDENTIFIER,
+                literal: "x".to_string(),
+            },
+            Token {
+                _type: token::PLUS,
+                literal: "+".to_string(),
+            },
+            Token {
+                _type: token::IDENTIFIER,
+                literal: "y".to_string(),
+            },
+            Token {
+                _type: token::SEMICOLON,
+                literal: ";".to_string(),
+            },
+            Token {
                 _type: token::RBRACE,
                 literal: "}".to_string(),
             },
             Token {
+                _type: token::SEMICOLON,
+                literal: ";".to_string(),
+            },
+            Token {
+                _type: token::LET,
+                literal: "let".to_string(),
+            },
+            Token {
+                _type: token::IDENTIFIER,
+                literal: "result".to_string(),
+            },
+            Token {
+                _type: token::ASSIGN,
+                literal: "=".to_string(),
+            },
+            Token {
+                _type: token::IDENTIFIER,
+                literal: "add".to_string(),
+            },
+            Token {
+                _type: token::LPAREN,
+                literal: "(".to_string(),
+            },
+            Token {
+                _type: token::IDENTIFIER,
+                literal: "five".to_string(),
+            },
+            Token {
                 _type: token::COMMA,
                 literal: ",".to_string(),
+            },
+            Token {
+                _type: token::IDENTIFIER,
+                literal: "ten".to_string(),
+            },
+            Token {
+                _type: token::RPAREN,
+                literal: ")".to_string(),
             },
             Token {
                 _type: token::SEMICOLON,

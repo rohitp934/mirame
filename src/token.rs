@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 // src/token/mod.rs
 pub type TokenType = &'static str;
 
@@ -5,6 +7,16 @@ pub type TokenType = &'static str;
 pub struct Token {
     pub _type: TokenType,
     pub literal: String,
+}
+
+pub fn lookup_identifier(identifier: &str) -> TokenType {
+    let keywords: HashMap<&str, TokenType> =
+        HashMap::from([("fn", FUNCTION), ("let", LET), ("return", RETURN)]);
+
+    if keywords.contains_key(identifier) {
+        return keywords.get(identifier).unwrap();
+    }
+    IDENTIFIER
 }
 
 // Terminal tokens
