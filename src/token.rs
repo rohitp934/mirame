@@ -1,6 +1,7 @@
 // src/token/mod.rs
-pub type TokenType = String;
+pub type TokenType = &'static str;
 
+#[derive(Debug)]
 pub struct Token {
     pub _type: TokenType,
     pub literal: String,
