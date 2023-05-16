@@ -1,3 +1,4 @@
+// src/token/mod.rs
 type TokenType = String;
 
 pub struct Token {
