@@ -12,3 +12,4 @@ path = "src/main.rs"
 
 [dependencies]
 anyhow = "1.0.71"
+whoami = "1.4.0"

@@ -13,7 +13,7 @@ pub struct Lexer {
 }
 
 impl Lexer {
-    fn new(input: String) -> Lexer {
+    pub fn new(input: String) -> Lexer {
         let mut l = Lexer {
             input: input.into_bytes(),
             position: 0,
@@ -42,7 +42,7 @@ impl Lexer {
         self.input[self.next_position]
     }
 
-    fn next_token(&mut self) -> Result<Token> {
+    pub fn next_token(&mut self) -> Result<Token> {
         self.skip_whitespace();
 
         let tok = match self.ch {
