@@ -22,7 +22,7 @@ impl Lexer {
         };
 
         l.read_char();
-        return l;
+        l
     }
 
     fn read_char(&mut self) {
@@ -42,7 +42,7 @@ impl Lexer {
         self.input[self.next_position]
     }
 
-    pub fn next_token(&mut self) -> Result<Token> {
+    pub fn next_token(&mut self) -> Token {
         self.skip_whitespace();
 
         let tok = match self.ch {
@@ -74,10 +74,9 @@ impl Lexer {
             b')' => Token::Rparen,
             b'{' => Token::Lbrace,
             b'}' => Token::Rbrace,
-            b'\0' => Token::Eof,
             b'a'..=b'z' | b'A'..=b'Z' | b'_' => {
                 let ident = self.read_identifier();
-                return Ok(match ident.as_str() {
+                return match ident.as_str() {
                     "fn" => Token::Function,
                     "let" => Token::Let,
                     "return" => Token::Return,
@@ -86,15 +85,15 @@ impl Lexer {
                     "true" => Token::True,
                     "false" => Token::False,
                     _ => Token::Identifier(ident),
-                });
+                };
             }
-            b'0'..=b'9' => return Ok(Token::Int(self.read_number())),
+            b'0'..=b'9' => return Token::Int(self.read_number()),
             0 => Token::Eof,
             _ => unreachable!("Mirame programs should not contain these chars."),
         };
 
         self.read_char();
-        Ok(tok)
+        tok
     }
 
     fn read_identifier(&mut self) -> String {
@@ -227,7 +226,7 @@ mod lexer_test {
         ];
 
         for token in tokens {
-            let next_token = lex.next_token()?;
+            let next_token = lex.next_token();
             println!("expected: {:?}, received {:?}", token, next_token);
             assert_eq!(token, next_token);
         }

@@ -7,12 +7,10 @@ pub fn start(istream: std::io::Stdin) {
     istream.lines().for_each(|line| {
         if let Ok(line) = line {
             let mut lex = Lexer::new(line);
-
-            while let Ok(token) = lex.next_token() {
+            let mut token = lex.next_token();
+            while token != Token::Eof {
                 println!("{}", token);
-                if let Token::Eof = token {
-                    break;
-                }
+                token = lex.next_token();
             }
             print!("{} ", PROMPT);
             let _ = io::stdout().flush();
