@@ -1,13 +1,17 @@
 // src/ast.rs
 
 pub struct Program {
-    statements: Vec<Statement>
+    pub statements: Vec<Statement>,
 }
 
+#[derive(Debug, PartialEq)]
 pub enum Statement {
-    Let(String, Expression)
+    Let(String, Expression),
 }
 
+#[derive(Debug, PartialEq)]
 pub enum Expression {
-    Identifier(String)
+    Identifier(String),
+    //TODO: Need to fill out the expressions
+    Exp,
 }
