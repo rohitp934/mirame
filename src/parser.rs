@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use crate::{
     ast::{Expression, Program, Statement},
     lexer::Lexer,
@@ -56,6 +57,7 @@ impl Parser {
     fn parse_statement(&mut self) -> Result<Statement> {
         match self.curr_token {
             Token::Let => self.parse_let_statement(),
+            Token::Return => self.parse_return_statement(),
             _ => unimplemented!(),
         }
     }
@@ -71,7 +73,8 @@ impl Parser {
             return Err(ParserError::ExpectedIdent(self.peek_token.clone()));
         }
 
-        self.expect_peek(Token::Assign, ParserError::ExpectedAssign);
+        self.expect_peek(Token::Assign, ParserError::ExpectedAssign)
+            .unwrap();
         // current token :: =
         //TODO: Skipping expression statements for now.
         while self.curr_token != Token::Semicolon {
@@ -79,6 +82,19 @@ impl Parser {
         }
 
         Ok(Statement::Let(name, Expression::Exp))
+    }
+
+    fn parse_return_statement(&mut self) -> Result<Statement> {
+        // Current token :: return
+
+        self.next_token();
+
+        //TODO: Skipping expression until semicolon;
+        while self.curr_token != Token::Semicolon {
+            self.next_token();
+        }
+
+        Ok(Statement::Return(None))
     }
 
     fn expect_peek(&mut self, t: Token, expected: fn(Token) -> ParserError) -> Result<()> {
@@ -113,6 +129,28 @@ mod tests {
                 Statement::Let("x".to_string(), Expression::Exp),
                 Statement::Let("y".to_string(), Expression::Exp),
                 Statement::Let("foobar".to_string(), Expression::Exp)
+            ]
+        );
+    }
+
+    #[test]
+    fn return_statement() {
+        let input = r#"
+            return 10;
+            return;
+            return 10 + 10;
+        "#;
+
+        let lexer = Lexer::new(input.to_owned());
+        let mut parser = Parser::new(lexer);
+
+        let program = parser.parse_program();
+        assert_eq!(
+            program.statements,
+            vec![
+                Statement::Return(None),
+                Statement::Return(None),
+                Statement::Return(None),
             ]
         );
     }
