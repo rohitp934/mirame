@@ -25,6 +25,10 @@ impl Lexer {
         l
     }
 
+    pub fn input(&self) -> String {
+        String::from_utf8(self.input.clone()).expect("Error")
+    }
+
     fn read_char(&mut self) {
         if self.next_position >= self.input.len() {
             self.ch = 0;

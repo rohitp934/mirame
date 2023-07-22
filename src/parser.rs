@@ -5,19 +5,36 @@ use crate::{
     token::Token,
 };
 
-struct Parser {
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone)]
+pub enum Precedence {
+    Lowest,
+    Equals,
+    Comparison,
+    Sum,
+    Product,
+    Prefix,
+    Call,
+}
+
+pub struct Parser {
     lex: Lexer,
     curr_token: Token,
     peek_token: Token,
+
+    errors: Vec<ParserError>,
 }
 
 #[derive(Debug)]
-enum ParserError {
+pub enum ParserError {
     ExpectedAssign(Token),
     ExpectedIdent(Token),
+    ExpectedPrefixToken(Token),
 }
 
 type Result<T> = std::result::Result<T, ParserError>;
+
+type PrefixParseFn = fn(&mut Parser) -> Result<Expression>;
+type InfixParseFn = fn(&mut Parser, Expression) -> Result<Expression>;
 
 impl Parser {
     pub fn new(lex: Lexer) -> Self {
@@ -25,6 +42,7 @@ impl Parser {
             lex,
             curr_token: Token::Illegal,
             peek_token: Token::Illegal,
+            errors: vec![],
         };
 
         // Eg: let x = 5;
@@ -32,6 +50,14 @@ impl Parser {
         p.next_token();
         p.next_token();
         p
+    }
+
+    pub fn input(&self) -> String {
+        self.lex.input()
+    }
+
+    pub fn errors(&self) -> &[ParserError] {
+        &self.errors
     }
 
     fn next_token(&mut self) {
@@ -45,7 +71,7 @@ impl Parser {
             match self.parse_statement() {
                 Ok(stmt) => statements.push(stmt),
                 Err(err) => {
-                    eprintln!("Error from parse_statement() :: {:?}", err)
+                    self.errors.push(err);
                 }
             }
             self.next_token();
@@ -58,8 +84,28 @@ impl Parser {
         match self.curr_token {
             Token::Let => self.parse_let_statement(),
             Token::Return => self.parse_return_statement(),
-            _ => unimplemented!(),
+            _ => self.parse_expression_statement(),
         }
+    }
+
+    fn parse_expression_statement(&mut self) -> Result<Statement> {
+        let exp = self.parse_expression(Precedence::Lowest);
+
+        if self.peek_token == Token::Semicolon {
+            self.next_token();
+        }
+
+        exp.map(Statement::Expression)
+    }
+
+    fn parse_expression(&mut self, precedence: Precedence) -> Result<Expression> {
+        let prefix = self
+            .prefix_parse_fn()
+            .ok_or_else(|| ParserError::ExpectedPrefixToken(self.curr_token.clone()))?;
+
+        let left_exp = prefix(self);
+
+        left_exp
     }
 
     fn parse_let_statement(&mut self) -> Result<Statement> {
@@ -97,6 +143,21 @@ impl Parser {
         Ok(Statement::Return(None))
     }
 
+    fn prefix_parse_fn(&self) -> Option<PrefixParseFn> {
+        match &self.curr_token {
+            Token::Identifier(_) => Some(Parser::parse_ident),
+            _ => None,
+        }
+    }
+
+    fn parse_ident(&mut self) -> Result<Expression> {
+        if let Token::Identifier(ident) = &self.curr_token {
+            Ok(Expression::Identifier(ident.to_string()))
+        } else {
+            Err(ParserError::ExpectedIdent(self.curr_token.clone()))
+        }
+    }
+
     fn expect_peek(&mut self, t: Token, expected: fn(Token) -> ParserError) -> Result<()> {
         if self.peek_token != t {
             return Err(expected(self.peek_token.clone()));
@@ -123,6 +184,8 @@ mod tests {
         let mut parser = Parser::new(lexer);
 
         let program = parser.parse_program();
+        check_parser_errors(&parser);
+
         assert_eq!(
             program.statements,
             vec![
@@ -145,6 +208,8 @@ mod tests {
         let mut parser = Parser::new(lexer);
 
         let program = parser.parse_program();
+        check_parser_errors(&parser);
+
         assert_eq!(
             program.statements,
             vec![
@@ -153,5 +218,31 @@ mod tests {
                 Statement::Return(None),
             ]
         );
+    }
+
+    #[test]
+    fn identifier_expression() {
+        let input = "foobar;";
+
+        let lexer = Lexer::new(input.to_owned());
+        let mut parser = Parser::new(lexer);
+
+        let program = parser.parse_program();
+        check_parser_errors(&parser);
+
+        assert_eq!(
+            program.statements,
+            vec![Statement::Expression(Expression::Identifier(
+                "foobar".to_string()
+            ))]
+        )
+    }
+
+    fn check_parser_errors(parser: &Parser) {
+        let errors = parser.errors();
+
+        if errors.len() > 0 {
+            panic!("Input: {}, Errors: {:?}", parser.input(), errors)
+        }
     }
 }
