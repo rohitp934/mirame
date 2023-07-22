@@ -28,7 +28,9 @@ pub struct Parser {
 pub enum ParserError {
     ExpectedAssign(Token),
     ExpectedIdent(Token),
+    ExpectedInt(Token),
     ExpectedPrefixToken(Token),
+    ParseInt(String),
 }
 
 type Result<T> = std::result::Result<T, ParserError>;
@@ -146,6 +148,7 @@ impl Parser {
     fn prefix_parse_fn(&self) -> Option<PrefixParseFn> {
         match &self.curr_token {
             Token::Identifier(_) => Some(Parser::parse_ident),
+            Token::Int(_) => Some(Parser::parse_integer_literal),
             _ => None,
         }
     }
@@ -155,6 +158,17 @@ impl Parser {
             Ok(Expression::Identifier(ident.to_string()))
         } else {
             Err(ParserError::ExpectedIdent(self.curr_token.clone()))
+        }
+    }
+
+    fn parse_integer_literal(&mut self) -> Result<Expression> {
+        if let Token::Int(integer) = &self.curr_token {
+            match integer.parse::<i64>() {
+                Ok(val) => Ok(Expression::IntegerLiteral(val)),
+                Err(_) => Err(ParserError::ParseInt(integer.to_string())),
+            }
+        } else {
+            Err(ParserError::ExpectedInt(self.curr_token.clone()))
         }
     }
 
@@ -235,6 +249,22 @@ mod tests {
             vec![Statement::Expression(Expression::Identifier(
                 "foobar".to_string()
             ))]
+        )
+    }
+
+    #[test]
+    fn integer_expression() {
+        let input = "5;";
+
+        let lexer = Lexer::new(input.to_owned());
+        let mut parser = Parser::new(lexer);
+
+        let program = parser.parse_program();
+        check_parser_errors(&parser);
+
+        assert_eq!(
+            program.statements,
+            vec![Statement::Expression(Expression::IntegerLiteral(5))]
         )
     }
 
