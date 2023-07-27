@@ -28,6 +28,7 @@ impl fmt::Display for Statement {
 pub enum Expression {
     Identifier(String),
     IntegerLiteral(i64),
+    Prefix(Prefix, Box<Expression>),
     //TODO: Need to fill out the expressions
     Exp,
 }
@@ -37,7 +38,27 @@ impl fmt::Display for Expression {
         match self {
             Expression::Identifier(ident) => write!(f, "{}", ident),
             Expression::IntegerLiteral(val) => write!(f, "{}", val),
+            Expression::Prefix(op, exp) => write!(f, "({}{})", op, exp),
             Expression::Exp => write!(f, ""),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub enum Prefix {
+    Bang,
+    Minus,
+    Inc,
+    Dec,
+}
+
+impl fmt::Display for Prefix {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Prefix::Bang => write!(f, "!"),
+            Prefix::Minus => write!(f, "-"),
+            Prefix::Inc => write!(f, "++"),
+            Prefix::Dec => write!(f, "--"),
         }
     }
 }

@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 use crate::{
-    ast::{Expression, Program, Statement},
+    ast::{Expression, Prefix, Program, Statement},
     lexer::Lexer,
     token::Token,
 };
@@ -149,6 +149,10 @@ impl Parser {
         match &self.curr_token {
             Token::Identifier(_) => Some(Parser::parse_ident),
             Token::Int(_) => Some(Parser::parse_integer_literal),
+            Token::Bang => Some(Parser::parse_prefix_exp),
+            Token::Minus => Some(Parser::parse_prefix_exp),
+            Token::Inc => Some(Parser::parse_prefix_exp),
+            Token::Dec => Some(Parser::parse_prefix_exp),
             _ => None,
         }
     }
@@ -172,6 +176,16 @@ impl Parser {
         }
     }
 
+    fn parse_prefix_exp(&mut self) -> Result<Expression> {
+        let prefix = self.prefix_token(&self.curr_token)?;
+
+        self.next_token();
+
+        let right_exp = self.parse_expression(Precedence::Prefix)?;
+
+        Ok(Expression::Prefix(prefix, Box::new(right_exp)))
+    }
+
     fn expect_peek(&mut self, t: Token, expected: fn(Token) -> ParserError) -> Result<()> {
         if self.peek_token != t {
             return Err(expected(self.peek_token.clone()));
@@ -179,11 +193,21 @@ impl Parser {
         self.next_token();
         Ok(())
     }
+
+    fn prefix_token(&self, token: &Token) -> Result<Prefix> {
+        match token {
+            Token::Bang => Ok(Prefix::Bang),
+            Token::Minus => Ok(Prefix::Minus),
+            Token::Inc => Ok(Prefix::Inc),
+            Token::Dec => Ok(Prefix::Dec),
+            token => Err(ParserError::ExpectedPrefixToken(token.clone())),
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::{Expression, Statement};
+    use crate::ast::{Expression, Prefix, Statement};
     use crate::lexer::Lexer;
     use crate::parser::Parser;
 
@@ -266,6 +290,29 @@ mod tests {
             program.statements,
             vec![Statement::Expression(Expression::IntegerLiteral(5))]
         )
+    }
+
+    #[test]
+    fn prefix_test() {
+        let tests = vec![
+            ("!5;", Prefix::Bang, Expression::IntegerLiteral(5)),
+            ("-5;", Prefix::Minus, Expression::IntegerLiteral(5)),
+            ("++5;", Prefix::Inc, Expression::IntegerLiteral(5)),
+            ("--5;", Prefix::Dec, Expression::IntegerLiteral(5)),
+        ];
+
+        for (input, op, exp) in tests {
+            let lexer = Lexer::new(input.to_string());
+            let mut parser = Parser::new(lexer);
+
+            let program = parser.parse_program();
+            check_parser_errors(&parser);
+
+            assert_eq!(
+                program.statements,
+                vec![Statement::Expression(Expression::Prefix(op, Box::new(exp)))]
+            )
+        }
     }
 
     fn check_parser_errors(parser: &Parser) {

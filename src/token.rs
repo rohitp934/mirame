@@ -27,6 +27,8 @@ pub enum Token {
     Gt,
     Eq,
     Neq,
+    Inc,
+    Dec,
     // Delimiters
     Lparen,
     Rparen,
@@ -53,6 +55,8 @@ impl Display for Token {
             Token::Lt => write!(f, "LessThan"),
             Token::Gt => write!(f, "GreaterThan"),
             Token::Plus => write!(f, "Plus"),
+            Token::Inc => write!(f, "Increment"),
+            Token::Dec => write!(f, "Decrement"),
             Token::Comma => write!(f, "Comma"),
             Token::Semicolon => write!(f, "Semicolon"),
             Token::Lparen => write!(f, "Lparen"),

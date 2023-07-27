@@ -58,8 +58,22 @@ impl Lexer {
                     Token::Assign
                 }
             }
-            b'+' => Token::Plus,
-            b'-' => Token::Minus,
+            b'+' => {
+                if self.peek_char() == b'+' {
+                    self.read_char();
+                    Token::Inc
+                } else {
+                    Token::Plus
+                }
+            }
+            b'-' => {
+                if self.peek_char() == b'-' {
+                    self.read_char();
+                    Token::Dec
+                } else {
+                    Token::Minus
+                }
+            }
             b'*' => Token::Asterisk,
             b'/' => Token::Slash,
             b'!' => {
