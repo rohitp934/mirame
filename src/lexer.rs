@@ -2,7 +2,6 @@
 #![allow(dead_code)]
 
 use crate::token::Token;
-use anyhow::Result;
 
 #[derive(Debug)]
 pub struct Lexer {
@@ -145,7 +144,7 @@ mod lexer_test {
     use crate::token::Token;
 
     #[test]
-    fn test_next_token() -> Result<()> {
+    fn test_next_token() -> anyhow::Result<()> {
         let input = r#"let five = 5;
             let ten = 10;
             let add = fn(x, y) {

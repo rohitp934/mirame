@@ -100,14 +100,12 @@ impl Parser {
         exp.map(Statement::Expression)
     }
 
-    fn parse_expression(&mut self, precedence: Precedence) -> Result<Expression> {
+    fn parse_expression(&mut self, _precedence: Precedence) -> Result<Expression> {
         let prefix = self
             .prefix_parse_fn()
             .ok_or_else(|| ParserError::ExpectedPrefixToken(self.curr_token.clone()))?;
 
-        let left_exp = prefix(self);
-
-        left_exp
+        prefix(self)
     }
 
     fn parse_let_statement(&mut self) -> Result<Statement> {
