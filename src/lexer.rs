@@ -83,8 +83,22 @@ impl Lexer {
                     Token::Bang
                 }
             }
-            b'<' => Token::Lt,
-            b'>' => Token::Gt,
+            b'<' => {
+                if self.peek_char() == b'=' {
+                    self.read_char();
+                    Token::Leq
+                } else {
+                    Token::Lt
+                }
+            }
+            b'>' => {
+                if self.peek_char() == b'=' {
+                    self.read_char();
+                    Token::Geq
+                } else {
+                    Token::Gt
+                }
+            }
             b',' => Token::Comma,
             b';' => Token::Semicolon,
             b'(' => Token::Lparen,
