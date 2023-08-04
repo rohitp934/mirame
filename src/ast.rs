@@ -39,6 +39,7 @@ pub enum Expression {
     IntegerLiteral(i64),
     Prefix(Prefix, Box<Expression>),
     Infix(Box<Expression>, Infix, Box<Expression>),
+    Bool(bool),
     //TODO: Need to fill out the expressions
     Exp,
 }
@@ -50,6 +51,7 @@ impl fmt::Display for Expression {
             Expression::IntegerLiteral(val) => write!(f, "{}", val),
             Expression::Prefix(op, exp) => write!(f, "({}{})", op, exp),
             Expression::Infix(exp_a, op, exp_b) => write!(f, "({} {} {})", exp_a, op, exp_b),
+            Expression::Bool(val) => write!(f, "{}", val),
             Expression::Exp => write!(f, ""),
         }
     }

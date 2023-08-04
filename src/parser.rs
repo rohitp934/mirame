@@ -29,6 +29,7 @@ pub enum ParserError {
     ExpectedAssign(Token),
     ExpectedIdent(Token),
     ExpectedInt(Token),
+    ExpectedBoolToken(Token),
     ExpectedPrefixToken(Token),
     ExpectedInfixToken(Token),
     ParseInt(String),
@@ -163,6 +164,8 @@ impl Parser {
         match &self.curr_token {
             Token::Identifier(_) => Some(Parser::parse_ident),
             Token::Int(_) => Some(Parser::parse_integer_literal),
+            Token::True => Some(Parser::parse_boolean),
+            Token::False => Some(Parser::parse_boolean),
             Token::Bang => Some(Parser::parse_prefix_exp),
             Token::Minus => Some(Parser::parse_prefix_exp),
             Token::Inc => Some(Parser::parse_prefix_exp),
@@ -203,6 +206,14 @@ impl Parser {
             }
         } else {
             Err(ParserError::ExpectedInt(self.curr_token.clone()))
+        }
+    }
+
+    fn parse_boolean(&mut self) -> Result<Expression> {
+        match &self.curr_token {
+            Token::True => Ok(Expression::Bool(true)),
+            Token::False => Ok(Expression::Bool(false)),
+            _ => Err(ParserError::ExpectedBoolToken(self.curr_token.clone())),
         }
     }
 
@@ -402,6 +413,31 @@ mod tests {
                     Box::new(Expression::IntegerLiteral(left)),
                     operator,
                     Box::new(Expression::IntegerLiteral(right))
+                ))]
+            );
+        }
+    }
+
+    #[test]
+    fn infix_expression_bool() {
+        let tests = vec![
+            ("true == true", true, Infix::Eq, true),
+            ("true != false", true, Infix::Neq, false),
+            ("false == false", false, Infix::Eq, false),
+        ];
+        for (input, left, operator, right) in tests {
+            let lexer = Lexer::new(input.to_owned());
+            let mut parser = Parser::new(lexer);
+
+            let program = parser.parse_program();
+            check_parser_errors(&parser);
+
+            assert_eq!(
+                program.statements,
+                vec![Statement::Expression(Expression::Infix(
+                    Box::new(Expression::Bool(left)),
+                    operator,
+                    Box::new(Expression::Bool(right))
                 ))]
             );
         }
