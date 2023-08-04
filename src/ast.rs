@@ -6,6 +6,15 @@ pub struct Program {
     pub statements: Vec<Statement>,
 }
 
+impl fmt::Display for Program {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for stmt in &self.statements {
+            write!(f, "{}", stmt)?;
+        }
+        Ok(())
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub enum Statement {
     Let(String, Expression),

@@ -378,72 +378,19 @@ mod tests {
     }
 
     #[test]
-    fn infix_expression() {
+    fn infix_expression_integer() {
         let tests = vec![
-            (
-                "5 == 5;",
-                Infix::Eq,
-                Expression::IntegerLiteral(5),
-                Expression::IntegerLiteral(5),
-            ),
-            (
-                "5 != 5;",
-                Infix::Neq,
-                Expression::IntegerLiteral(5),
-                Expression::IntegerLiteral(5),
-            ),
-            (
-                "5 < 5;",
-                Infix::Lt,
-                Expression::IntegerLiteral(5),
-                Expression::IntegerLiteral(5),
-            ),
-            (
-                "5 > 5;",
-                Infix::Gt,
-                Expression::IntegerLiteral(5),
-                Expression::IntegerLiteral(5),
-            ),
-            (
-                "5 <= 5;",
-                Infix::Leq,
-                Expression::IntegerLiteral(5),
-                Expression::IntegerLiteral(5),
-            ),
-            (
-                "5 >= 5;",
-                Infix::Geq,
-                Expression::IntegerLiteral(5),
-                Expression::IntegerLiteral(5),
-            ),
-            (
-                "5 + 5;",
-                Infix::Plus,
-                Expression::IntegerLiteral(5),
-                Expression::IntegerLiteral(5),
-            ),
-            (
-                "5 - 5;",
-                Infix::Minus,
-                Expression::IntegerLiteral(5),
-                Expression::IntegerLiteral(5),
-            ),
-            (
-                "5 * 5;",
-                Infix::Asterisk,
-                Expression::IntegerLiteral(5),
-                Expression::IntegerLiteral(5),
-            ),
-            (
-                "5 / 5;",
-                Infix::Slash,
-                Expression::IntegerLiteral(5),
-                Expression::IntegerLiteral(5),
-            ),
+            ("5 + 5;", 5, Infix::Plus, 5),
+            ("5 - 5;", 5, Infix::Minus, 5),
+            ("5 * 5;", 5, Infix::Asterisk, 5),
+            ("5 / 5;", 5, Infix::Slash, 5),
+            ("5 > 5;", 5, Infix::Gt, 5),
+            ("5 < 5;", 5, Infix::Lt, 5),
+            ("5 == 5;", 5, Infix::Eq, 5),
+            ("5 != 5;", 5, Infix::Neq, 5),
         ];
-
-        for (input, op, left_exp, right_exp) in tests {
-            let lexer = Lexer::new(input.to_string());
+        for (input, left, operator, right) in tests {
+            let lexer = Lexer::new(input.to_owned());
             let mut parser = Parser::new(lexer);
 
             let program = parser.parse_program();
@@ -452,11 +399,44 @@ mod tests {
             assert_eq!(
                 program.statements,
                 vec![Statement::Expression(Expression::Infix(
-                    Box::new(left_exp),
-                    op,
-                    Box::new(right_exp)
+                    Box::new(Expression::IntegerLiteral(left)),
+                    operator,
+                    Box::new(Expression::IntegerLiteral(right))
                 ))]
-            )
+            );
+        }
+    }
+
+    #[test]
+    fn operator_precedence() {
+        test_parsing(vec![
+            ("-a * b", "((-a) * b);"),
+            ("!-a", "(!(-a));"),
+            ("a + b + c", "((a + b) + c);"),
+            ("a + b - c", "((a + b) - c);"),
+            ("a * b * c", "((a * b) * c);"),
+            ("a * b / c", "((a * b) / c);"),
+            ("a + b / c", "(a + (b / c));"),
+            ("a + b * c + d / e - f", "(((a + (b * c)) + (d / e)) - f);"),
+            ("3 + 4; -5 * 5", "(3 + 4);((-5) * 5);"),
+            ("5 > 4 == 3 < 4", "((5 > 4) == (3 < 4));"),
+            ("5 < 4 != 3 > 4", "((5 < 4) != (3 > 4));"),
+            (
+                "3 + 4 * 5 == 3 * 1 + 4 * 5",
+                "((3 + (4 * 5)) == ((3 * 1) + (4 * 5)));",
+            ),
+        ]);
+    }
+
+    fn test_parsing(tests: Vec<(&str, &str)>) {
+        for (input, expected) in tests {
+            let lexer = Lexer::new(input.to_string());
+            let mut parser = Parser::new(lexer);
+
+            let program = parser.parse_program();
+            check_parser_errors(&parser);
+
+            assert_eq!(program.to_string(), expected);
         }
     }
 
