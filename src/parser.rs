@@ -32,6 +32,7 @@ pub enum ParserError {
     ExpectedBoolToken(Token),
     ExpectedPrefixToken(Token),
     ExpectedInfixToken(Token),
+    ExpectedRparen(Token),
     ParseInt(String),
 }
 
@@ -170,6 +171,7 @@ impl Parser {
             Token::Minus => Some(Parser::parse_prefix_exp),
             Token::Inc => Some(Parser::parse_prefix_exp),
             Token::Dec => Some(Parser::parse_prefix_exp),
+            Token::Lparen => Some(Parser::parse_grouped_exp),
             _ => None,
         }
     }
@@ -241,6 +243,19 @@ impl Parser {
             operator,
             Box::new(right_exp),
         ))
+    }
+
+    fn parse_grouped_exp(&mut self) -> Result<Expression> {
+        // curr_token = (
+        self.next_token();
+
+        // curr_token is first token in exp
+        let exp = self.parse_expression(Precedence::Lowest)?;
+
+        self.expect_peek(Token::Rparen, ParserError::ExpectedRparen)?;
+        // curr_token )
+
+        Ok(exp)
     }
 
     fn expect_peek(&mut self, t: Token, expected: fn(Token) -> ParserError) -> Result<()> {
@@ -465,6 +480,11 @@ mod tests {
             ("false", "false;"),
             ("3 > 5 == false", "((3 > 5) == false);"),
             ("3 < 5 == true", "((3 < 5) == true);"),
+            ("1 + (2 + 3) + 4", "((1 + (2 + 3)) + 4);"),
+            ("(5 + 5) * 2", "((5 + 5) * 2);"),
+            ("2 / (5 + 5)", "(2 / (5 + 5));"),
+            ("-(5 + 5)", "(-(5 + 5));"),
+            ("!(true == true)", "(!(true == true));"),
         ]);
     }
 
