@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 use crate::{
-    ast::{Expression, Infix, Prefix, Program, Statement},
+    ast::{BlockStatement, Expression, Infix, Prefix, Program, Statement},
     lexer::Lexer,
     token::Token,
 };
@@ -33,6 +33,7 @@ pub enum ParserError {
     ExpectedPrefixToken(Token),
     ExpectedInfixToken(Token),
     ExpectedRparen(Token),
+    ExpectedLbrace(Token),
     ParseInt(String),
 }
 
@@ -161,6 +162,21 @@ impl Parser {
         Ok(Statement::Return(None))
     }
 
+    fn parse_block_statement(&mut self) -> Result<BlockStatement> {
+        let mut statements = vec![];
+        // curr_token = {
+
+        self.next_token();
+        // curr_token is inside block
+
+        while self.curr_token != Token::Rbrace && self.curr_token != Token::Eof {
+            statements.push(self.parse_statement()?);
+            self.next_token();
+        }
+
+        Ok(BlockStatement { statements })
+    }
+
     fn prefix_parse_fn(&self) -> Option<PrefixParseFn> {
         match &self.curr_token {
             Token::Identifier(_) => Some(Parser::parse_ident),
@@ -172,6 +188,7 @@ impl Parser {
             Token::Inc => Some(Parser::parse_prefix_exp),
             Token::Dec => Some(Parser::parse_prefix_exp),
             Token::Lparen => Some(Parser::parse_grouped_exp),
+            Token::If => Some(Parser::parse_if_exp),
             _ => None,
         }
     }
@@ -256,6 +273,28 @@ impl Parser {
         // curr_token )
 
         Ok(exp)
+    }
+
+    fn parse_if_exp(&mut self) -> Result<Expression> {
+        self.next_token();
+
+        let condition = self.parse_expression(Precedence::Lowest)?;
+
+        self.expect_peek(Token::Lbrace, ParserError::ExpectedLbrace)?;
+
+        let then = self.parse_block_statement()?;
+
+        let alt = if self.peek_token == Token::Else {
+            self.next_token();
+
+            self.expect_peek(Token::Lbrace, ParserError::ExpectedLbrace)?;
+
+            Some(self.parse_block_statement()?)
+        } else {
+            None
+        };
+
+        Ok(Expression::If(Box::new(condition), then, alt))
     }
 
     fn expect_peek(&mut self, t: Token, expected: fn(Token) -> ParserError) -> Result<()> {
@@ -485,6 +524,11 @@ mod tests {
             ("2 / (5 + 5)", "(2 / (5 + 5));"),
             ("-(5 + 5)", "(-(5 + 5));"),
             ("!(true == true)", "(!(true == true));"),
+            ("if x < y { x }", "if (x < y) { x; };"),
+            (
+                "if (x < y) { x } else { y }",
+                "if (x < y) { x; } else { y; };",
+            ),
         ]);
     }
 

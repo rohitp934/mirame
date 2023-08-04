@@ -34,11 +34,26 @@ impl fmt::Display for Statement {
 }
 
 #[derive(Debug, PartialEq)]
+pub struct BlockStatement {
+    pub statements: Vec<Statement>,
+}
+
+impl fmt::Display for BlockStatement {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for s in &self.statements {
+            write!(f, "{{ {} }}", s)?;
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, PartialEq)]
 pub enum Expression {
     Identifier(String),
     IntegerLiteral(i64),
     Prefix(Prefix, Box<Expression>),
     Infix(Box<Expression>, Infix, Box<Expression>),
+    If(Box<Expression>, BlockStatement, Option<BlockStatement>),
     Bool(bool),
     //TODO: Need to fill out the expressions
     Exp,
@@ -51,6 +66,13 @@ impl fmt::Display for Expression {
             Expression::IntegerLiteral(val) => write!(f, "{}", val),
             Expression::Prefix(op, exp) => write!(f, "({}{})", op, exp),
             Expression::Infix(exp_a, op, exp_b) => write!(f, "({} {} {})", exp_a, op, exp_b),
+            Expression::If(condition, then, alt) => {
+                write!(f, "if {} {}", condition, then)?;
+                if let Some(alt) = alt {
+                    write!(f, " else {}", alt)?;
+                }
+                Ok(())
+            }
             Expression::Bool(val) => write!(f, "{}", val),
             Expression::Exp => write!(f, ""),
         }
