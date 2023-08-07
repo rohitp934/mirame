@@ -32,6 +32,7 @@ pub enum ParserError {
     ExpectedBoolToken(Token),
     ExpectedPrefixToken(Token),
     ExpectedInfixToken(Token),
+    ExpectedLparen(Token),
     ExpectedRparen(Token),
     ExpectedLbrace(Token),
     ParseInt(String),
@@ -189,6 +190,7 @@ impl Parser {
             Token::Dec => Some(Parser::parse_prefix_exp),
             Token::Lparen => Some(Parser::parse_grouped_exp),
             Token::If => Some(Parser::parse_if_exp),
+            Token::Function => Some(Parser::parse_function),
             _ => None,
         }
     }
@@ -210,8 +212,12 @@ impl Parser {
     }
 
     fn parse_ident(&mut self) -> Result<Expression> {
+        self.parse_ident_string().map(Expression::Identifier)
+    }
+
+    fn parse_ident_string(&mut self) -> Result<String> {
         if let Token::Identifier(ident) = &self.curr_token {
-            Ok(Expression::Identifier(ident.to_string()))
+            Ok(ident.to_string())
         } else {
             Err(ParserError::ExpectedIdent(self.curr_token.clone()))
         }
@@ -295,6 +301,45 @@ impl Parser {
         };
 
         Ok(Expression::If(Box::new(condition), then, alt))
+    }
+
+    fn parse_function(&mut self) -> Result<Expression> {
+        self.expect_peek(Token::Lparen, ParserError::ExpectedLparen)?;
+
+        let params = self.parse_function_params()?;
+
+        self.expect_peek(Token::Lbrace, ParserError::ExpectedLbrace)?;
+
+        let body = self.parse_block_statement()?;
+
+        Ok(Expression::Function(params, body))
+    }
+
+    fn parse_function_params(&mut self) -> Result<Vec<String>> {
+        let mut params = vec![];
+
+        if self.peek_token == Token::Rparen {
+            self.next_token();
+            return Ok(params);
+        }
+
+        self.next_token();
+        // curr_token is now at first identifier
+
+        params.push(self.parse_ident_string()?);
+
+        while self.peek_token == Token::Comma {
+            self.next_token();
+            self.next_token();
+            // curr_token is now at next ident
+
+            params.push(self.parse_ident_string()?);
+        }
+
+        self.expect_peek(Token::Rparen, ParserError::ExpectedRparen)?;
+        // curr_token is at )
+
+        Ok(params)
     }
 
     fn expect_peek(&mut self, t: Token, expected: fn(Token) -> ParserError) -> Result<()> {
@@ -529,6 +574,9 @@ mod tests {
                 "if (x < y) { x } else { y }",
                 "if (x < y) { x; } else { y; };",
             ),
+            ("fn() { 3 * 9; }", "fn() { (3 * 9); };"),
+            ("fn(x) { x * 9; }", "fn(x) { (x * 9); };"),
+            ("fn(x, y) { x + y; }", "fn(x, y) { (x + y); };"),
         ]);
     }
 

@@ -1,7 +1,9 @@
 // src/ast.rs
-#![allow(dead_code)]
+#![allow(dead_code, unused_imports)]
 
 use std::fmt;
+
+use crate::token::Token;
 pub struct Program {
     pub statements: Vec<Statement>,
 }
@@ -51,10 +53,11 @@ impl fmt::Display for BlockStatement {
 pub enum Expression {
     Identifier(String),
     IntegerLiteral(i64),
+    Bool(bool),
     Prefix(Prefix, Box<Expression>),
     Infix(Box<Expression>, Infix, Box<Expression>),
     If(Box<Expression>, BlockStatement, Option<BlockStatement>),
-    Bool(bool),
+    Function(Vec<String>, BlockStatement),
     //TODO: Need to fill out the expressions
     Exp,
 }
@@ -73,6 +76,7 @@ impl fmt::Display for Expression {
                 }
                 Ok(())
             }
+            Expression::Function(params, body) => write!(f, "fn({}) {}", params.join(", "), body),
             Expression::Bool(val) => write!(f, "{}", val),
             Expression::Exp => write!(f, ""),
         }
