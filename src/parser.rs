@@ -139,15 +139,17 @@ impl Parser {
             return Err(ParserError::ExpectedIdent(self.peek_token.clone()));
         }
 
-        self.expect_peek(Token::Assign, ParserError::ExpectedAssign)
-            .unwrap();
+        self.expect_peek(Token::Assign, ParserError::ExpectedAssign)?;
         // current token :: =
-        //TODO: Skipping expression statements for now.
-        while self.curr_token != Token::Semicolon {
+        self.next_token();
+
+        let value = self.parse_expression(Precedence::Lowest)?;
+
+        if self.peek_token == Token::Semicolon {
             self.next_token();
         }
 
-        Ok(Statement::Let(name, Expression::Exp))
+        Ok(Statement::Let(name, value))
     }
 
     fn parse_return_statement(&mut self) -> Result<Statement> {
@@ -155,12 +157,19 @@ impl Parser {
 
         self.next_token();
 
-        //TODO: Skipping expression until semicolon;
-        while self.curr_token != Token::Semicolon {
+        if self.curr_token == Token::Semicolon {
+            // curr_token = ;
+            // This means there is not return value
+            return Ok(Statement::Return(None));
+        }
+
+        let return_value = self.parse_expression(Precedence::Lowest)?;
+
+        if self.peek_token == Token::Semicolon {
             self.next_token();
         }
 
-        Ok(Statement::Return(None))
+        Ok(Statement::Return(Some(return_value)))
     }
 
     fn parse_block_statement(&mut self) -> Result<BlockStatement> {
@@ -422,11 +431,11 @@ mod tests {
 
     #[test]
     fn let_statement() {
-        let input = r#"
+        let input = "
             let x = 5;
-            let y = 1023;
+            let y = 23;
             let foobar = x + y;
-        "#;
+        ";
         let lexer = Lexer::new(input.to_owned());
         let mut parser = Parser::new(lexer);
 
@@ -436,20 +445,27 @@ mod tests {
         assert_eq!(
             program.statements,
             vec![
-                Statement::Let("x".to_string(), Expression::Exp),
-                Statement::Let("y".to_string(), Expression::Exp),
-                Statement::Let("foobar".to_string(), Expression::Exp)
+                Statement::Let("x".to_string(), Expression::IntegerLiteral(5)),
+                Statement::Let("y".to_string(), Expression::IntegerLiteral(23)),
+                Statement::Let(
+                    "foobar".to_string(),
+                    Expression::Infix(
+                        Box::new(Expression::Identifier("x".to_string())),
+                        Infix::Plus,
+                        Box::new(Expression::Identifier("y".to_string()))
+                    )
+                )
             ]
         );
     }
 
     #[test]
     fn return_statement() {
-        let input = r#"
-            return 10;
+        let input = "
             return;
-            return 10 + 10;
-        "#;
+            return 5;
+            return 993322;
+        ";
 
         let lexer = Lexer::new(input.to_owned());
         let mut parser = Parser::new(lexer);
@@ -461,8 +477,8 @@ mod tests {
             program.statements,
             vec![
                 Statement::Return(None),
-                Statement::Return(None),
-                Statement::Return(None),
+                Statement::Return(Some(Expression::IntegerLiteral(5))),
+                Statement::Return(Some(Expression::IntegerLiteral(993322))),
             ]
         );
     }
@@ -626,6 +642,8 @@ mod tests {
                 "add((((a + b) + ((c * d) / f)) + g));",
             ),
             ("fn(x, y) { x + y; }(3, 4)", "fn(x, y) { (x + y); }(3, 4);"),
+            ("let x = 3", "let x = 3;"),
+            ("let x = 3 + f * 8;", "let x = (3 + (f * 8));"),
         ]);
     }
 

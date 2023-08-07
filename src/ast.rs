@@ -59,7 +59,6 @@ pub enum Expression {
     If(Box<Expression>, BlockStatement, Option<BlockStatement>),
     Function(Vec<String>, BlockStatement),
     Call(Box<Expression>, Vec<Expression>),
-    Exp,
 }
 
 impl fmt::Display for Expression {
@@ -79,7 +78,6 @@ impl fmt::Display for Expression {
             }
             Expression::Function(params, body) => write!(f, "fn({}) {}", params.join(", "), body),
             Expression::Call(fl, args) => write!(f, "{}({})", fl, comma_separated_print(args)),
-            Expression::Exp => write!(f, ""),
         }
     }
 }
