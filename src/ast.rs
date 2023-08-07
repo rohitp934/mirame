@@ -58,7 +58,7 @@ pub enum Expression {
     Infix(Box<Expression>, Infix, Box<Expression>),
     If(Box<Expression>, BlockStatement, Option<BlockStatement>),
     Function(Vec<String>, BlockStatement),
-    //TODO: Need to fill out the expressions
+    Call(Box<Expression>, Vec<Expression>),
     Exp,
 }
 
@@ -67,6 +67,7 @@ impl fmt::Display for Expression {
         match self {
             Expression::Identifier(ident) => write!(f, "{}", ident),
             Expression::IntegerLiteral(val) => write!(f, "{}", val),
+            Expression::Bool(val) => write!(f, "{}", val),
             Expression::Prefix(op, exp) => write!(f, "({}{})", op, exp),
             Expression::Infix(exp_a, op, exp_b) => write!(f, "({} {} {})", exp_a, op, exp_b),
             Expression::If(condition, then, alt) => {
@@ -77,10 +78,17 @@ impl fmt::Display for Expression {
                 Ok(())
             }
             Expression::Function(params, body) => write!(f, "fn({}) {}", params.join(", "), body),
-            Expression::Bool(val) => write!(f, "{}", val),
+            Expression::Call(fl, args) => write!(f, "{}({})", fl, comma_separated_print(args)),
             Expression::Exp => write!(f, ""),
         }
     }
+}
+
+fn comma_separated_print(args: &[Expression]) -> String {
+    args.iter()
+        .map(|exp| exp.to_string())
+        .collect::<Vec<String>>()
+        .join(", ")
 }
 
 #[derive(Debug, PartialEq)]

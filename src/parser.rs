@@ -207,6 +207,7 @@ impl Parser {
             Token::Minus => Some(Parser::parse_infix_exp),
             Token::Asterisk => Some(Parser::parse_infix_exp),
             Token::Slash => Some(Parser::parse_infix_exp),
+            Token::Lparen => Some(Parser::parse_call_exp),
             _ => None,
         }
     }
@@ -303,6 +304,41 @@ impl Parser {
         Ok(Expression::If(Box::new(condition), then, alt))
     }
 
+    fn parse_call_exp(&mut self, function: Expression) -> Result<Expression> {
+        let args = self.parse_expressions(Token::Rparen, ParserError::ExpectedRparen)?;
+
+        Ok(Expression::Call(Box::new(function), args))
+    }
+
+    fn parse_expressions(
+        &mut self,
+        closing_token: Token,
+        expected: fn(Token) -> ParserError,
+    ) -> Result<Vec<Expression>> {
+        let mut exps = vec![];
+
+        if self.peek_token == closing_token {
+            self.next_token();
+            return Ok(exps);
+        }
+
+        self.next_token();
+        // curr_token is first expression
+        exps.push(self.parse_expression(Precedence::Lowest)?);
+
+        while self.peek_token == Token::Comma {
+            self.next_token();
+            self.next_token();
+            // curr_token is next expression
+
+            exps.push(self.parse_expression(Precedence::Lowest)?);
+        }
+
+        self.expect_peek(closing_token, expected)?;
+
+        Ok(exps)
+    }
+
     fn parse_function(&mut self) -> Result<Expression> {
         self.expect_peek(Token::Lparen, ParserError::ExpectedLparen)?;
 
@@ -372,6 +408,7 @@ impl Parser {
             Token::Minus => (Precedence::Sum, Some(Infix::Minus)),
             Token::Asterisk => (Precedence::Product, Some(Infix::Asterisk)),
             Token::Slash => (Precedence::Product, Some(Infix::Slash)),
+            Token::Lparen => (Precedence::Call, None),
             _ => (Precedence::Lowest, None),
         }
     }
@@ -577,6 +614,18 @@ mod tests {
             ("fn() { 3 * 9; }", "fn() { (3 * 9); };"),
             ("fn(x) { x * 9; }", "fn(x) { (x * 9); };"),
             ("fn(x, y) { x + y; }", "fn(x, y) { (x + y); };"),
+            ("call()", "call();"),
+            ("add(1, 2 * 3, 4 + 5)", "add(1, (2 * 3), (4 + 5));"),
+            ("a + add(b * c) + d", "((a + add((b * c))) + d);"),
+            (
+                "add(a, b, 1, 2 * 3, 4 + 5, add(6, 7 * 8))",
+                "add(a, b, 1, (2 * 3), (4 + 5), add(6, (7 * 8)));",
+            ),
+            (
+                "add(a + b + c * d / f + g)",
+                "add((((a + b) + ((c * d) / f)) + g));",
+            ),
+            ("fn(x, y) { x + y; }(3, 4)", "fn(x, y) { (x + y); }(3, 4);"),
         ]);
     }
 
