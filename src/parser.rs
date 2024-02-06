@@ -191,8 +191,8 @@ impl Parser {
         match &self.curr_token {
             Token::Identifier(_) => Some(Parser::parse_ident),
             Token::Int(_) => Some(Parser::parse_integer_literal),
-            Token::True => Some(Parser::parse_boolean),
-            Token::False => Some(Parser::parse_boolean),
+            Token::True => Some(Parser::parse_bool),
+            Token::False => Some(Parser::parse_bool),
             Token::Bang => Some(Parser::parse_prefix_exp),
             Token::Minus => Some(Parser::parse_prefix_exp),
             Token::Inc => Some(Parser::parse_prefix_exp),
@@ -244,7 +244,7 @@ impl Parser {
         }
     }
 
-    fn parse_boolean(&mut self) -> Result<Expression> {
+    fn parse_bool(&mut self) -> Result<Expression> {
         match &self.curr_token {
             Token::True => Ok(Expression::Bool(true)),
             Token::False => Ok(Expression::Bool(false)),
