@@ -1,9 +1,4 @@
-mod ast;
-mod lexer;
-mod object;
-mod parser;
 mod repl;
-mod token;
 use std::io::{self, Write};
 
 use crate::repl::PROMPT;

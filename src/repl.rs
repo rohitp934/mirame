@@ -1,4 +1,4 @@
-use crate::{lexer::Lexer, token::Token};
+use mirame::{lexer::Lexer, token::Token};
 use std::io::{self, Write};
 
 pub const PROMPT: &str = "> ";
