@@ -45,9 +45,9 @@ impl Object {
 
 #[derive(Debug)]
 pub enum EvalError {
-    TypeMismatch(Infix, Object, Object),
+    TypeMismatch(Object, Infix, Object),
     UnknownPrefixOperator(Prefix, Object),
-    UnknownInfixOperator(Infix, Object, Object),
+    UnknownInfixOperator(Object, Infix, Object),
     IdentifierNotFound(String),
     NotCallable(String),
     WrongArgCount { expected: usize, got: usize },
@@ -56,7 +56,7 @@ pub enum EvalError {
 impl fmt::Display for EvalError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            EvalError::TypeMismatch(infix, left, right) => write!(
+            EvalError::TypeMismatch(left, infix, right) => write!(
                 f,
                 "type mismatch: {} {} {}",
                 left.obj_type(),
@@ -66,7 +66,7 @@ impl fmt::Display for EvalError {
             EvalError::UnknownPrefixOperator(prefix, right) => {
                 write!(f, "unknown operator: {}{}", prefix, right.obj_type())
             }
-            EvalError::UnknownInfixOperator(infix, left, right) => {
+            EvalError::UnknownInfixOperator(left, infix, right) => {
                 write!(
                     f,
                     "unknown operator: {} {} {}",

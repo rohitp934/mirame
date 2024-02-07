@@ -1,7 +1,7 @@
 use std::{cell::RefCell, rc::Rc};
 
 use crate::{
-    ast::{Expression, Prefix, Program, Statement},
+    ast::{Expression, Infix, Prefix, Program, Statement},
     object::{env::Env, EvalError, EvalResult, Object},
 };
 
@@ -26,6 +26,9 @@ fn eval_expression(exp: &Expression, env: Rc<RefCell<Env>>) -> EvalResult {
         Expression::IntegerLiteral(val) => Ok(Object::Integer(*val)),
         Expression::Bool(val) => Ok(Object::Bool(*val)),
         Expression::Prefix(prefix, exp) => eval_prefix_exp(prefix, exp.as_ref(), env),
+        Expression::Infix(left, infix, right) => {
+            eval_infix_exp(left.as_ref(), infix, right.as_ref(), env)
+        }
         _ => todo!(),
     }
 }
@@ -50,6 +53,51 @@ fn eval_prefix_exp(prefix: &Prefix, exp: &Expression, env: Rc<RefCell<Env>>) -> 
     }
 }
 
+fn eval_infix_exp(
+    left: &Expression,
+    infix: &Infix,
+    right: &Expression,
+    env: Rc<RefCell<Env>>,
+) -> EvalResult {
+    let left_obj = eval_expression(left, Rc::clone(&env))?;
+    let right_obj = eval_expression(right, Rc::clone(&env))?;
+
+    match (left_obj, right_obj) {
+        (Object::Bool(left), Object::Bool(right)) => eval_boolean_infix_exp(left, infix, right),
+        (Object::Integer(left), Object::Integer(right)) => {
+            eval_integer_infix_exp(left, infix, right)
+        }
+        (left, right) => Err(EvalError::TypeMismatch(left, infix.clone(), right)),
+    }
+}
+
+fn eval_boolean_infix_exp(left: bool, infix: &Infix, right: bool) -> EvalResult {
+    match infix {
+        Infix::Eq => Ok(Object::Bool(left == right)),
+        Infix::Neq => Ok(Object::Bool(left != right)),
+        _ => Err(EvalError::UnknownInfixOperator(
+            Object::Bool(left),
+            infix.clone(),
+            Object::Bool(right),
+        )),
+    }
+}
+
+fn eval_integer_infix_exp(left: i64, infix: &Infix, right: i64) -> EvalResult {
+    match infix {
+        Infix::Plus => Ok(Object::Integer(left + right)),
+        Infix::Minus => Ok(Object::Integer(left - right)),
+        Infix::Asterisk => Ok(Object::Integer(left * right)),
+        Infix::Slash => Ok(Object::Integer(left / right)),
+        Infix::Eq => Ok(Object::Bool(left == right)),
+        Infix::Neq => Ok(Object::Bool(left != right)),
+        Infix::Leq => Ok(Object::Bool(left <= right)),
+        Infix::Geq => Ok(Object::Bool(left >= right)),
+        Infix::Lt => Ok(Object::Bool(left < right)),
+        Infix::Gt => Ok(Object::Bool(left > right)),
+    }
+}
+
 #[cfg(test)]
 mod eval_tests {
     use std::{cell::RefCell, rc::Rc};
@@ -71,12 +119,35 @@ mod eval_tests {
             ("!false", "true"),
             ("!!true", "true"),
             ("!!false", "false"),
+            // Infix
+            ("true == true", "true"),
+            ("true == false", "false"),
+            ("true != true", "false"),
+            ("true != false", "true"),
+            ("1 == 2", "false"),
+            ("1 != 2", "true"),
+            ("1 > 2", "false"),
+            ("1 < 2", "true"),
         ])
     }
 
     #[test]
     fn eval_int() {
-        expect_values(vec![("5", "5"), ("10", "10")])
+        expect_values(vec![
+            ("5", "5"),
+            ("10", "10"),
+            // Prefix
+            ("-5", "-5"),
+            ("-10", "-10"),
+            ("-(-10)", "10"),
+            // Infix
+            ("5 + 5", "10"),
+            ("5 - 5", "0"),
+            ("5 * 5", "25"),
+            ("5 / 5", "1"),
+            ("100 + 100 - 200", "0"),
+            ("5 * (3 + 2)", "25"),
+        ])
     }
 
     fn expect_values(tests: Vec<(&str, &str)>) {

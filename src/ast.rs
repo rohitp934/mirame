@@ -108,7 +108,7 @@ impl fmt::Display for Prefix {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Infix {
     Eq,
     Neq,
