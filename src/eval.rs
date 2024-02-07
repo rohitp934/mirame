@@ -225,6 +225,26 @@ mod eval_tests {
         ])
     }
 
+    #[test]
+    fn error_handling() {
+        expect_errors(vec![
+            ("5 + true", "type mismatch: INTEGER + BOOL"),
+            ("5 + true; 5;", "type mismatch: INTEGER + BOOL"),
+            ("-true;", "unknown operator: -BOOL"),
+            ("true + false;", "unknown operator: BOOL + BOOL"),
+            ("5; true + false; 5", "unknown operator: BOOL + BOOL"),
+            (
+                "if (5 < 10) { true + false }",
+                "unknown operator: BOOL + BOOL",
+            ),
+            (
+                "if (3 == true) { 1 } else { 2 }",
+                "type mismatch: INTEGER == BOOL",
+            ),
+            ("foobar", "identifier not found: foobar"),
+        ])
+    }
+
     fn expect_values(tests: Vec<(&str, &str)>) {
         for (input, expected) in tests {
             match eval_input(input) {
@@ -236,6 +256,22 @@ mod eval_tests {
                         "expected `{}`, but got error=`{}` for `{}`",
                         expected, err, input
                     );
+                }
+            }
+        }
+    }
+
+    fn expect_errors(tests: Vec<(&str, &str)>) {
+        for (input, expected) in &tests {
+            match eval_input(input) {
+                Ok(obj) => {
+                    panic!(
+                        "expected error=`{}`, but got `{}` for `{}`",
+                        expected, obj, input
+                    );
+                }
+                Err(err) => {
+                    assert_eq!(err.to_string(), expected.to_string(), "for `{}`", input);
                 }
             }
         }
