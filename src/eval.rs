@@ -2,7 +2,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use crate::{
     ast::{BlockStatement, Expression, Infix, Prefix, Program, Statement},
-    object::{env::Env, EvalError, EvalResult, Object},
+    object::{assert_arg_count, env::Env, EvalError, EvalResult, Object},
 };
 
 pub fn eval(program: &Program, env: Rc<RefCell<Env>>) -> EvalResult {
@@ -62,6 +62,14 @@ fn eval_expression(exp: &Expression, env: Rc<RefCell<Env>>) -> EvalResult {
             eval_if_exp(condition.as_ref(), then, alt.as_ref(), env)
         }
         Expression::Identifier(ident) => eval_identifier(ident, env),
+        Expression::Function(params, body) => {
+            Ok(Object::Function(params.to_vec(), body.clone(), env))
+        }
+        Expression::Call(func, args) => {
+            let func = eval_expression(func, Rc::clone(&env))?;
+            let arguments = eval_expressions(args, env)?;
+            apply_function(func, arguments)
+        }
         _ => todo!(),
     }
 }
@@ -120,6 +128,14 @@ fn eval_if_exp(
     }
 }
 
+fn eval_expressions(exps: &[Expression], env: Rc<RefCell<Env>>) -> Result<Vec<Object>, EvalError> {
+    let mut results = vec![];
+    for exp in exps {
+        results.push(eval_expression(exp, Rc::clone(&env))?);
+    }
+    Ok(results)
+}
+
 fn eval_identifier(ident: &str, env: Rc<RefCell<Env>>) -> EvalResult {
     if let Some(obj) = env.borrow().get(ident) {
         return Ok(obj.clone());
@@ -152,6 +168,39 @@ fn eval_integer_infix_exp(left: i64, infix: &Infix, right: i64) -> EvalResult {
         Infix::Geq => Ok(Object::Bool(left >= right)),
         Infix::Lt => Ok(Object::Bool(left < right)),
         Infix::Gt => Ok(Object::Bool(left > right)),
+    }
+}
+
+fn apply_function(func: Object, args: Vec<Object>) -> EvalResult {
+    match func {
+        Object::Function(params, body, env) => {
+            assert_arg_count(params.len(), &args)?;
+            let new_env = extend_function_env(params, args, env);
+            let evaluated = eval_block_statement(&body, new_env)?;
+            unwrap_return_value(evaluated)
+        }
+        _ => Err(EvalError::NotCallable(func.clone())),
+    }
+}
+
+fn extend_function_env(
+    params: Vec<String>,
+    args: Vec<Object>,
+    env: Rc<RefCell<Env>>,
+) -> Rc<RefCell<Env>> {
+    let new_env = Rc::new(RefCell::new(Env::extend(env)));
+    for (i, param) in params.iter().enumerate() {
+        let arg = args.get(i).cloned().unwrap_or(Object::Null);
+        new_env.borrow_mut().set(param, arg);
+    }
+
+    new_env
+}
+
+fn unwrap_return_value(obj: Object) -> EvalResult {
+    match obj {
+        Object::ReturnValue(val) => Ok(*val),
+        _ => Ok(obj),
     }
 }
 
@@ -257,6 +306,30 @@ mod eval_tests {
             ("let x = 10; x;", "10"),
             ("let x = 10; let y = 5; x + y;", "15"),
             ("let x = 10; let y = 5; let z = x + y; z;", "15"),
+        ])
+    }
+
+    #[test]
+    fn function_obj() {
+        expect_values(vec![
+            ("fn(a) { a; }", "fn(a) {\n{ a; }\n}"),
+            ("fn(a, b) { a + b; }", "fn(a, b) {\n{ (a + b); }\n}"),
+        ])
+    }
+
+    #[test]
+    fn function_call() {
+        expect_values(vec![
+            ("let identity = fn(a) { a; }; identity(5);", "5"),
+            ("let identity = fn(a) { return a; }; identity(5);", "5"),
+            ("let double = fn(a) { a * 2; }; double(5);", "10"),
+            ("let add = fn(a, b) { a + b; }; add(5, 5);", "10"),
+            (
+                "let add = fn(a, b) { a + b; }; add(5 + 5, add(5, 5));",
+                "20",
+            ),
+            ("fn(a) { a; }(5)", "5"),
+            ("fn(a) { a; }(1); 5;", "5"),
         ])
     }
 

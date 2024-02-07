@@ -3,8 +3,11 @@
 
 pub mod env;
 
-use crate::ast::{Infix, Prefix};
+use crate::ast::{BlockStatement, Infix, Prefix};
 use core::fmt;
+use std::{cell::RefCell, rc::Rc};
+
+use self::env::Env;
 
 pub type EvalResult = Result<Object, EvalError>;
 
@@ -14,6 +17,7 @@ pub enum Object {
     Bool(bool),
     Null,
     ReturnValue(Box<Object>),
+    Function(Vec<String>, BlockStatement, Rc<RefCell<Env>>),
 }
 
 impl fmt::Display for Object {
@@ -23,6 +27,9 @@ impl fmt::Display for Object {
             Object::Bool(b) => write!(f, "{}", b),
             Object::Null => write!(f, "null"),
             Object::ReturnValue(val) => write!(f, "{}", val),
+            Object::Function(args, body, _) => {
+                write!(f, "fn({}) {{\n{}\n}}", args.join(", "), body)
+            }
         }
     }
 }
@@ -34,6 +41,7 @@ impl Object {
             Object::Bool(_) => "BOOL",
             Object::Null => "NULL",
             Object::ReturnValue(_) => "RETURN_VALUE",
+            Object::Function(_, _, _) => "FUNCTION",
         }
     }
 
@@ -52,7 +60,7 @@ pub enum EvalError {
     UnknownPrefixOperator(Prefix, Object),
     UnknownInfixOperator(Object, Infix, Object),
     IdentifierNotFound(String),
-    NotCallable(String),
+    NotCallable(Object),
     WrongArgCount { expected: usize, got: usize },
 }
 
