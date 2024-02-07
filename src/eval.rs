@@ -1,7 +1,7 @@
 use std::{cell::RefCell, rc::Rc};
 
 use crate::{
-    ast::{Expression, Infix, Prefix, Program, Statement},
+    ast::{BlockStatement, Expression, Infix, Prefix, Program, Statement},
     object::{env::Env, EvalError, EvalResult, Object},
 };
 
@@ -21,6 +21,15 @@ fn eval_statement(statement: &Statement, env: Rc<RefCell<Env>>) -> EvalResult {
     }
 }
 
+fn eval_block_statement(block: &BlockStatement, env: Rc<RefCell<Env>>) -> EvalResult {
+    let mut result = Object::Null;
+    for statement in &block.statements {
+        result = eval_statement(statement, Rc::clone(&env))?;
+    }
+
+    Ok(result)
+}
+
 fn eval_expression(exp: &Expression, env: Rc<RefCell<Env>>) -> EvalResult {
     match exp {
         Expression::IntegerLiteral(val) => Ok(Object::Integer(*val)),
@@ -28,6 +37,9 @@ fn eval_expression(exp: &Expression, env: Rc<RefCell<Env>>) -> EvalResult {
         Expression::Prefix(prefix, exp) => eval_prefix_exp(prefix, exp.as_ref(), env),
         Expression::Infix(left, infix, right) => {
             eval_infix_exp(left.as_ref(), infix, right.as_ref(), env)
+        }
+        Expression::If(condition, then, alt) => {
+            eval_if_exp(condition.as_ref(), then, alt.as_ref(), env)
         }
         _ => todo!(),
     }
@@ -68,6 +80,22 @@ fn eval_infix_exp(
             eval_integer_infix_exp(left, infix, right)
         }
         (left, right) => Err(EvalError::TypeMismatch(left, infix.clone(), right)),
+    }
+}
+
+fn eval_if_exp(
+    condition: &Expression,
+    then: &BlockStatement,
+    alt: Option<&BlockStatement>,
+    env: Rc<RefCell<Env>>,
+) -> EvalResult {
+    let result = eval_expression(condition, Rc::clone(&env))?;
+
+    if result.is_truthy() {
+        eval_block_statement(then, env)
+    } else {
+        alt.map(|a| eval_block_statement(a, env))
+            .unwrap_or(Ok(Object::Null))
     }
 }
 
@@ -148,6 +176,19 @@ mod eval_tests {
             ("100 + 100 - 200", "0"),
             ("5 * (3 + 2)", "25"),
         ])
+    }
+
+    #[test]
+    fn eval_if() {
+        expect_values(vec![
+            ("if (true) { 10 }", "10"),
+            ("if (false) { 10 }", "null"),
+            ("if (1) { 10 }", "10"),
+            ("if (1 < 2) { 10 }", "10"),
+            ("if (1 > 2) { 10 }", "null"),
+            ("if (1 > 2) { 10 } else { 20 }", "20"),
+            ("if (1 < 2) { 10 } else { 20 }", "10"),
+        ]);
     }
 
     fn expect_values(tests: Vec<(&str, &str)>) {
