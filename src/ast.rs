@@ -89,7 +89,7 @@ fn comma_separated_print(args: &[Expression]) -> String {
         .join(", ")
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Prefix {
     Bang,
     Minus,

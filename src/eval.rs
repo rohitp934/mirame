@@ -1,31 +1,52 @@
 use std::{cell::RefCell, rc::Rc};
 
 use crate::{
-    ast::{Expression, Program, Statement},
-    object::{env::Env, EvalResult, Object},
+    ast::{Expression, Prefix, Program, Statement},
+    object::{env::Env, EvalError, EvalResult, Object},
 };
 
 pub fn eval(program: &Program, env: Rc<RefCell<Env>>) -> EvalResult {
     let mut result = Object::Null;
     for statement in &program.statements {
-        result = eval_statement(statement, Rc::clone(&env));
+        result = eval_statement(statement, Rc::clone(&env))?;
     }
 
     Ok(result)
 }
 
-fn eval_statement(statement: &Statement, env: Rc<RefCell<Env>>) -> Object {
+fn eval_statement(statement: &Statement, env: Rc<RefCell<Env>>) -> EvalResult {
     match statement {
         Statement::Expression(exp) => eval_expression(exp, env),
         _ => todo!(),
     }
 }
 
-fn eval_expression(exp: &Expression, env: Rc<RefCell<Env>>) -> Object {
+fn eval_expression(exp: &Expression, env: Rc<RefCell<Env>>) -> EvalResult {
     match exp {
-        Expression::IntegerLiteral(val) => Object::Integer(*val),
-        Expression::Bool(val) => Object::Bool(*val),
+        Expression::IntegerLiteral(val) => Ok(Object::Integer(*val)),
+        Expression::Bool(val) => Ok(Object::Bool(*val)),
+        Expression::Prefix(prefix, exp) => eval_prefix_exp(prefix, exp.as_ref(), env),
         _ => todo!(),
+    }
+}
+
+fn eval_prefix_exp(prefix: &Prefix, exp: &Expression, env: Rc<RefCell<Env>>) -> EvalResult {
+    let obj = eval_expression(exp, env)?;
+
+    match prefix {
+        Prefix::Bang => Ok(Object::Bool(!obj.is_truthy())),
+        Prefix::Minus => match obj {
+            Object::Integer(val) => Ok(Object::Integer(-val)),
+            _ => Err(EvalError::UnknownPrefixOperator(prefix.clone(), obj)),
+        },
+        Prefix::Inc => match obj {
+            Object::Integer(val) => Ok(Object::Integer(val + 1)),
+            _ => Err(EvalError::UnknownPrefixOperator(prefix.clone(), obj)),
+        },
+        Prefix::Dec => match obj {
+            Object::Integer(val) => Ok(Object::Integer(val - 1)),
+            _ => Err(EvalError::UnknownPrefixOperator(prefix.clone(), obj)),
+        },
     }
 }
 
@@ -42,7 +63,15 @@ mod eval_tests {
 
     #[test]
     fn eval_bool() {
-        expect_values(vec![("false", "false"), ("true", "true")])
+        expect_values(vec![
+            ("false", "false"),
+            ("true", "true"),
+            // Prefix
+            ("!true", "false"),
+            ("!false", "true"),
+            ("!!true", "true"),
+            ("!!false", "false"),
+        ])
     }
 
     #[test]
