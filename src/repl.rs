@@ -1,4 +1,4 @@
-use mirame::{eval::eval, lexer::Lexer, object::env::Env, parser::Parser, token::Token};
+use mirame::{eval::eval, lexer::Lexer, object::env::Env, parser::Parser};
 use std::{
     cell::RefCell,
     io::{self, Write},
@@ -8,8 +8,6 @@ use std::{
 pub const PROMPT: &str = "> ";
 
 pub fn start(istream: std::io::Stdin) {
-    let user = whoami::username();
-
     let env = Rc::new(RefCell::new(Env::new()));
 
     istream.lines().for_each(|line| {

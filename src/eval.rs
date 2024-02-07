@@ -32,7 +32,6 @@ fn eval_statement(statement: &Statement, env: Rc<RefCell<Env>>) -> EvalResult {
             env.borrow_mut().set(ident, result.clone());
             Ok(Object::Null)
         }
-        _ => todo!(),
     }
 }
 
@@ -70,7 +69,6 @@ fn eval_expression(exp: &Expression, env: Rc<RefCell<Env>>) -> EvalResult {
             let arguments = eval_expressions(args, env)?;
             apply_function(func, arguments)
         }
-        _ => todo!(),
     }
 }
 
