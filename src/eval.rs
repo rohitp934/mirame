@@ -26,6 +26,12 @@ fn eval_statement(statement: &Statement, env: Rc<RefCell<Env>>) -> EvalResult {
             Ok(Object::ReturnValue(Box::new(result)))
         }
         Statement::Return(None) => Ok(Object::ReturnValue(Box::new(Object::Null))),
+        Statement::Let(ident, exp) => {
+            let result = eval_expression(exp, Rc::clone(&env))?;
+
+            env.borrow_mut().set(ident, result.clone());
+            Ok(Object::Null)
+        }
         _ => todo!(),
     }
 }
@@ -242,6 +248,15 @@ mod eval_tests {
                 "type mismatch: INTEGER == BOOL",
             ),
             ("foobar", "identifier not found: foobar"),
+        ])
+    }
+
+    #[test]
+    fn let_statement() {
+        expect_values(vec![
+            ("let x = 10; x;", "10"),
+            ("let x = 10; let y = 5; x + y;", "15"),
+            ("let x = 10; let y = 5; let z = x + y; z;", "15"),
         ])
     }
 

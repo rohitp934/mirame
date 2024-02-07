@@ -30,4 +30,8 @@ impl Env {
                 .and_then(|o| o.borrow().get(name).clone()),
         }
     }
+
+    pub fn set(&mut self, name: &str, val: Object) {
+        self.store.insert(name.to_string(), val);
+    }
 }
