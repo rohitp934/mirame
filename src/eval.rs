@@ -9,6 +9,10 @@ pub fn eval(program: &Program, env: Rc<RefCell<Env>>) -> EvalResult {
     let mut result = Object::Null;
     for statement in &program.statements {
         result = eval_statement(statement, Rc::clone(&env))?;
+
+        if let Object::ReturnValue(val) = result {
+            return Ok(*val);
+        }
     }
 
     Ok(result)
@@ -17,6 +21,11 @@ pub fn eval(program: &Program, env: Rc<RefCell<Env>>) -> EvalResult {
 fn eval_statement(statement: &Statement, env: Rc<RefCell<Env>>) -> EvalResult {
     match statement {
         Statement::Expression(exp) => eval_expression(exp, env),
+        Statement::Return(Some(exp)) => {
+            let result = eval_expression(exp, env)?;
+            Ok(Object::ReturnValue(Box::new(result)))
+        }
+        Statement::Return(None) => Ok(Object::ReturnValue(Box::new(Object::Null))),
         _ => todo!(),
     }
 }
@@ -25,6 +34,11 @@ fn eval_block_statement(block: &BlockStatement, env: Rc<RefCell<Env>>) -> EvalRe
     let mut result = Object::Null;
     for statement in &block.statements {
         result = eval_statement(statement, Rc::clone(&env))?;
+
+        if let Object::ReturnValue(_) = result {
+            // Not unwrapping the ReturnValue here, because we want to return the ReturnValue
+            return Ok(result);
+        }
     }
 
     Ok(result)
@@ -41,6 +55,7 @@ fn eval_expression(exp: &Expression, env: Rc<RefCell<Env>>) -> EvalResult {
         Expression::If(condition, then, alt) => {
             eval_if_exp(condition.as_ref(), then, alt.as_ref(), env)
         }
+        Expression::Identifier(ident) => eval_identifier(ident, env),
         _ => todo!(),
     }
 }
@@ -97,6 +112,14 @@ fn eval_if_exp(
         alt.map(|a| eval_block_statement(a, env))
             .unwrap_or(Ok(Object::Null))
     }
+}
+
+fn eval_identifier(ident: &str, env: Rc<RefCell<Env>>) -> EvalResult {
+    if let Some(obj) = env.borrow().get(ident) {
+        return Ok(obj.clone());
+    }
+
+    Err(EvalError::IdentifierNotFound(ident.to_string()))
 }
 
 fn eval_boolean_infix_exp(left: bool, infix: &Infix, right: bool) -> EvalResult {
@@ -189,6 +212,17 @@ mod eval_tests {
             ("if (1 > 2) { 10 } else { 20 }", "20"),
             ("if (1 < 2) { 10 } else { 20 }", "10"),
         ]);
+    }
+
+    #[test]
+    fn eval_return() {
+        expect_values(vec![
+            ("return", "null"),
+            ("return 10;", "10"),
+            ("false; return; 1 + 2;", "null"),
+            ("if (true) { return 10; }", "10"),
+            ("if (true) { if (true) { return 10; } return 1; }", "10"),
+        ])
     }
 
     fn expect_values(tests: Vec<(&str, &str)>) {

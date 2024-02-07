@@ -13,6 +13,7 @@ pub enum Object {
     Integer(i64),
     Bool(bool),
     Null,
+    ReturnValue(Box<Object>),
 }
 
 impl fmt::Display for Object {
@@ -21,6 +22,7 @@ impl fmt::Display for Object {
             Object::Integer(i) => write!(f, "{}", i),
             Object::Bool(b) => write!(f, "{}", b),
             Object::Null => write!(f, "null"),
+            Object::ReturnValue(val) => write!(f, "{}", val),
         }
     }
 }
@@ -31,6 +33,7 @@ impl Object {
             Object::Integer(_) => "INTEGER",
             Object::Bool(_) => "BOOL",
             Object::Null => "NULL",
+            Object::ReturnValue(_) => "RETURN_VALUE",
         }
     }
 
