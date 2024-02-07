@@ -333,6 +333,14 @@ mod eval_tests {
         ])
     }
 
+    #[test]
+    fn closure() {
+        expect_values(vec![(
+            "let newAdder = fn(x) { fn(y) { x + y } }; let addTwo = newAdder(2); addTwo(3);",
+            "5",
+        )])
+    }
+
     fn expect_values(tests: Vec<(&str, &str)>) {
         for (input, expected) in tests {
             match eval_input(input) {
