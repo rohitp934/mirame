@@ -29,6 +29,7 @@ pub enum ParserError {
     ExpectedAssign(Token),
     ExpectedIdent(Token),
     ExpectedInt(Token),
+    ExpectedString(Token),
     ExpectedBoolToken(Token),
     ExpectedPrefixToken(Token),
     ExpectedInfixToken(Token),
@@ -191,6 +192,7 @@ impl Parser {
         match &self.curr_token {
             Token::Identifier(_) => Some(Parser::parse_ident),
             Token::Int(_) => Some(Parser::parse_integer_literal),
+            Token::String(_) => Some(Parser::parse_string_literal),
             Token::True => Some(Parser::parse_bool),
             Token::False => Some(Parser::parse_bool),
             Token::Bang => Some(Parser::parse_prefix_exp),
@@ -230,6 +232,14 @@ impl Parser {
             Ok(ident.to_string())
         } else {
             Err(ParserError::ExpectedIdent(self.curr_token.clone()))
+        }
+    }
+
+    fn parse_string_literal(&mut self) -> Result<Expression> {
+        if let Token::String(val) = &self.curr_token {
+            Ok(Expression::StringLiteral(val.to_string()))
+        } else {
+            Err(ParserError::ExpectedString(self.curr_token.clone()))
         }
     }
 
@@ -514,6 +524,24 @@ mod tests {
         assert_eq!(
             program.statements,
             vec![Statement::Expression(Expression::IntegerLiteral(5))]
+        )
+    }
+
+    #[test]
+    fn string_expression() {
+        let input = r#""hello world""#;
+
+        let lexer = Lexer::new(input.to_owned());
+        let mut parser = Parser::new(lexer);
+
+        let program = parser.parse_program();
+        check_parser_errors(&parser);
+
+        assert_eq!(
+            program.statements,
+            vec![Statement::Expression(Expression::StringLiteral(
+                "hello world".to_string()
+            ))]
         )
     }
 

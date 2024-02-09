@@ -6,6 +6,8 @@ use std::fmt::Display;
 pub enum Token {
     Identifier(String),
     Int(String),
+    Float(String),
+    String(String),
     Illegal,
     Eof,
     // Keywords
@@ -45,6 +47,8 @@ impl Display for Token {
         match self {
             Token::Identifier(x) => write!(f, "Ident({})", x),
             Token::Int(x) => write!(f, "Int({})", x),
+            Token::Float(x) => write!(f, "Float({}", x),
+            Token::String(x) => write!(f, "String({})", x),
             Token::Illegal => write!(f, "Illegal"),
             Token::Eof => write!(f, "Eof"),
             Token::Assign => write!(f, "Assign"),

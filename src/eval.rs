@@ -52,6 +52,7 @@ fn eval_block_statement(block: &BlockStatement, env: Rc<RefCell<Env>>) -> EvalRe
 fn eval_expression(exp: &Expression, env: Rc<RefCell<Env>>) -> EvalResult {
     match exp {
         Expression::IntegerLiteral(val) => Ok(Object::Integer(*val)),
+        Expression::StringLiteral(val) => Ok(Object::String(val.clone())),
         Expression::Bool(val) => Ok(Object::Bool(*val)),
         Expression::Prefix(prefix, exp) => eval_prefix_exp(prefix, exp.as_ref(), env),
         Expression::Infix(left, infix, right) => {
@@ -69,6 +70,7 @@ fn eval_expression(exp: &Expression, env: Rc<RefCell<Env>>) -> EvalResult {
             let arguments = eval_expressions(args, env)?;
             apply_function(func, arguments)
         }
+        _ => todo!(),
     }
 }
 
@@ -106,6 +108,7 @@ fn eval_infix_exp(
         (Object::Integer(left), Object::Integer(right)) => {
             eval_integer_infix_exp(left, infix, right)
         }
+        (Object::String(left), Object::String(right)) => eval_string_infix_exp(left, infix, right),
         (left, right) => Err(EvalError::TypeMismatch(left, infix.clone(), right)),
     }
 }
@@ -166,6 +169,17 @@ fn eval_integer_infix_exp(left: i64, infix: &Infix, right: i64) -> EvalResult {
         Infix::Geq => Ok(Object::Bool(left >= right)),
         Infix::Lt => Ok(Object::Bool(left < right)),
         Infix::Gt => Ok(Object::Bool(left > right)),
+    }
+}
+
+fn eval_string_infix_exp(left: String, infix: &Infix, right: String) -> EvalResult {
+    match infix {
+        Infix::Plus => Ok(Object::String(format!("{left}{right}"))),
+        _ => Err(EvalError::UnknownInfixOperator(
+            Object::String(left),
+            infix.clone(),
+            Object::String(right),
+        )),
     }
 }
 
@@ -254,6 +268,17 @@ mod eval_tests {
         ])
     }
 
+    #[test]
+    fn eval_string() {
+        expect_values(vec![
+            (r#""Hello, World!""#, r#""Hello, World!""#),
+            (r#""hello" + " " + "world""#, r#""hello world""#),
+        ]);
+        expect_errors(vec![(
+            r#""hello world" - "hello""#,
+            "unknown operator: STRING - STRING",
+        )]);
+    }
     #[test]
     fn eval_if() {
         expect_values(vec![

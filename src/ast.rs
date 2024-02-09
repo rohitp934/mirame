@@ -53,6 +53,7 @@ impl fmt::Display for BlockStatement {
 pub enum Expression {
     Identifier(String),
     IntegerLiteral(i64),
+    StringLiteral(String),
     Bool(bool),
     Prefix(Prefix, Box<Expression>),
     Infix(Box<Expression>, Infix, Box<Expression>),
@@ -66,6 +67,7 @@ impl fmt::Display for Expression {
         match self {
             Expression::Identifier(ident) => write!(f, "{}", ident),
             Expression::IntegerLiteral(val) => write!(f, "{}", val),
+            Expression::StringLiteral(val) => write!(f, "{}", val),
             Expression::Bool(val) => write!(f, "{}", val),
             Expression::Prefix(op, exp) => write!(f, "({}{})", op, exp),
             Expression::Infix(exp_a, op, exp_b) => write!(f, "({} {} {})", exp_a, op, exp_b),

@@ -105,6 +105,7 @@ impl Lexer {
             b')' => Token::Rparen,
             b'{' => Token::Lbrace,
             b'}' => Token::Rbrace,
+            b'"' => Token::String(self.read_string()),
             b'a'..=b'z' | b'A'..=b'Z' | b'_' => {
                 let ident = self.read_identifier();
                 return match ident.as_str() {
@@ -133,6 +134,18 @@ impl Lexer {
             self.read_char();
         }
         // Return string from pos to self.position
+        String::from_utf8_lossy(&self.input[pos..self.position]).to_string()
+    }
+
+    fn read_string(&mut self) -> String {
+        let pos = self.position + 1;
+        loop {
+            self.read_char();
+            if self.ch == b'"' {
+                break;
+            }
+        }
+
         String::from_utf8_lossy(&self.input[pos..self.position]).to_string()
     }
 
@@ -175,6 +188,8 @@ mod lexer_test {
 
         10 == 10;
         10 != 9;
+        "foobar";
+        "foo bar";
         "#;
 
         let mut lex = Lexer::new(input.into());
@@ -252,6 +267,10 @@ mod lexer_test {
             Token::Int(String::from("10")),
             Token::Neq,
             Token::Int(String::from("9")),
+            Token::Semicolon,
+            Token::String(String::from("foobar")),
+            Token::Semicolon,
+            Token::String(String::from("foo bar")),
             Token::Semicolon,
             Token::Eof,
         ];

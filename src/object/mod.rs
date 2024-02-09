@@ -14,6 +14,7 @@ pub type EvalResult = Result<Object, EvalError>;
 #[derive(Debug, Clone)]
 pub enum Object {
     Integer(i64),
+    String(String),
     Bool(bool),
     Null,
     ReturnValue(Box<Object>),
@@ -24,6 +25,7 @@ impl fmt::Display for Object {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Object::Integer(i) => write!(f, "{}", i),
+            Object::String(s) => write!(f, "\"{}\"", s),
             Object::Bool(b) => write!(f, "{}", b),
             Object::Null => write!(f, "null"),
             Object::ReturnValue(val) => write!(f, "{}", val),
@@ -38,6 +40,7 @@ impl Object {
     pub fn obj_type(&self) -> &str {
         match self {
             Object::Integer(_) => "INTEGER",
+            Object::String(_) => "STRING",
             Object::Bool(_) => "BOOL",
             Object::Null => "NULL",
             Object::ReturnValue(_) => "RETURN_VALUE",
