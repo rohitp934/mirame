@@ -70,6 +70,8 @@ fn eval_expression(exp: &Expression, env: Rc<RefCell<Env>>) -> EvalResult {
             let arguments = eval_expressions(args, env)?;
             apply_function(func, arguments)
         }
+        Expression::Array(elements) => eval_array_literal(elements, env),
+        Expression::Index(left, index) => eval_index_exp(left, index, env),
         _ => todo!(),
     }
 }
@@ -126,6 +128,23 @@ fn eval_if_exp(
     } else {
         alt.map(|a| eval_block_statement(a, env))
             .unwrap_or(Ok(Object::Null))
+    }
+}
+
+fn eval_array_literal(elements: &[Expression], env: Rc<RefCell<Env>>) -> EvalResult {
+    let values = eval_expressions(elements, env)?;
+    Ok(Object::Array(values))
+}
+
+fn eval_index_exp(left: &Expression, index: &Expression, env: Rc<RefCell<Env>>) -> EvalResult {
+    let left_evaluated = eval_expression(left, env.clone())?;
+    let index_evaluated = eval_expression(index, env)?;
+
+    match (left_evaluated, index_evaluated) {
+        (Object::Array(array), Object::Integer(val)) => {
+            Ok(array.get(val as usize).cloned().unwrap_or(Object::Null))
+        }
+        (l, i) => Err(EvalError::UnknownIndexOperator(l, i)),
     }
 }
 
@@ -362,6 +381,33 @@ mod eval_tests {
             "let newAdder = fn(x) { fn(y) { x + y } }; let addTwo = newAdder(2); addTwo(3);",
             "5",
         )])
+    }
+
+    #[test]
+    fn array_literal() {
+        expect_values(vec![("[1, 2 * 2, 3 / 3]", "[1, 4, 1]")])
+    }
+
+    #[test]
+    fn array_index_expression() {
+        expect_values(vec![
+            ("[1, 2, 3][0]", "1"),
+            ("[1, 2, 3][1]", "2"),
+            ("[1, 2, 3][2]", "3"),
+            ("let i = 0; [1][i];", "1"),
+            ("[1, 2, 3][1 + 1];", "3"),
+            ("let myArray = [1, 2, 3]; myArray[2];", "3"),
+            (
+                "let myArray = [1, 2, 3]; myArray[0] + myArray[1] + myArray[2];",
+                "6",
+            ),
+            (
+                "let myArray = [1, 2, 3]; let i = myArray[0]; myArray[i]",
+                "2",
+            ),
+            ("[1, 2, 3][3]", "null"),
+            ("[1, 2, 3][-1]", "null"),
+        ]);
     }
 
     fn expect_values(tests: Vec<(&str, &str)>) {

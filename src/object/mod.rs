@@ -19,6 +19,7 @@ pub enum Object {
     Null,
     ReturnValue(Box<Object>),
     Function(Vec<String>, BlockStatement, Rc<RefCell<Env>>),
+    Array(Vec<Object>),
 }
 
 impl fmt::Display for Object {
@@ -31,6 +32,14 @@ impl fmt::Display for Object {
             Object::ReturnValue(val) => write!(f, "{}", val),
             Object::Function(args, body, _) => {
                 write!(f, "fn({}) {{\n{}\n}}", args.join(", "), body)
+            }
+            Object::Array(elements) => {
+                let values = elements
+                    .iter()
+                    .map(|v| v.to_string())
+                    .collect::<Vec<String>>()
+                    .join(", ");
+                write!(f, "[{}]", values)
             }
         }
     }
@@ -45,6 +54,7 @@ impl Object {
             Object::Null => "NULL",
             Object::ReturnValue(_) => "RETURN_VALUE",
             Object::Function(_, _, _) => "FUNCTION",
+            Object::Array(_) => "ARRAY",
         }
     }
 
@@ -62,6 +72,7 @@ pub enum EvalError {
     TypeMismatch(Object, Infix, Object),
     UnknownPrefixOperator(Prefix, Object),
     UnknownInfixOperator(Object, Infix, Object),
+    UnknownIndexOperator(Object, Object),
     IdentifierNotFound(String),
     NotCallable(Object),
     WrongArgCount { expected: usize, got: usize },
@@ -89,6 +100,12 @@ impl fmt::Display for EvalError {
                     right.obj_type()
                 )
             }
+            EvalError::UnknownIndexOperator(left, index) => write!(
+                f,
+                "unknown index operator: {}[{}]",
+                left.obj_type(),
+                index.obj_type()
+            ),
             EvalError::IdentifierNotFound(ident) => write!(f, "identifier not found: {}", ident),
             EvalError::NotCallable(function) => {
                 write!(f, "not a function or a closure: {}", function)

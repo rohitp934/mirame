@@ -14,6 +14,7 @@ pub enum Precedence {
     Product,
     Prefix,
     Call,
+    Index,
 }
 
 pub struct Parser {
@@ -36,6 +37,8 @@ pub enum ParserError {
     ExpectedLparen(Token),
     ExpectedRparen(Token),
     ExpectedLbrace(Token),
+    ExpectedLbracket(Token),
+    ExpectedRbracket(Token),
     ParseInt(String),
 }
 
@@ -202,6 +205,7 @@ impl Parser {
             Token::Lparen => Some(Parser::parse_grouped_exp),
             Token::If => Some(Parser::parse_if_exp),
             Token::Function => Some(Parser::parse_function),
+            Token::Lbracket => Some(Parser::parse_array_literal),
             _ => None,
         }
     }
@@ -219,6 +223,7 @@ impl Parser {
             Token::Asterisk => Some(Parser::parse_infix_exp),
             Token::Slash => Some(Parser::parse_infix_exp),
             Token::Lparen => Some(Parser::parse_call_exp),
+            Token::Lbracket => Some(Parser::parse_index_exp),
             _ => None,
         }
     }
@@ -321,6 +326,24 @@ impl Parser {
         };
 
         Ok(Expression::If(Box::new(condition), then, alt))
+    }
+
+    fn parse_array_literal(&mut self) -> Result<Expression> {
+        let elements = self.parse_expressions(Token::Rbracket, ParserError::ExpectedRbracket)?;
+
+        Ok(Expression::Array(elements))
+    }
+
+    fn parse_index_exp(&mut self, array: Expression) -> Result<Expression> {
+        // curr_token = [
+        self.next_token();
+
+        let elements = self.parse_expression(Precedence::Lowest)?;
+
+        self.expect_peek(Token::Rbracket, ParserError::ExpectedRbracket)?;
+        // curr_token = ]
+
+        Ok(Expression::Index(Box::new(array), Box::new(elements)))
     }
 
     fn parse_call_exp(&mut self, function: Expression) -> Result<Expression> {
@@ -428,6 +451,7 @@ impl Parser {
             Token::Asterisk => (Precedence::Product, Some(Infix::Asterisk)),
             Token::Slash => (Precedence::Product, Some(Infix::Slash)),
             Token::Lparen => (Precedence::Call, None),
+            Token::Lbracket => (Precedence::Index, None),
             _ => (Precedence::Lowest, None),
         }
     }
@@ -541,6 +565,57 @@ mod tests {
             program.statements,
             vec![Statement::Expression(Expression::StringLiteral(
                 "hello world".to_string()
+            ))]
+        )
+    }
+
+    #[test]
+    fn parsing_array_expression() {
+        let input = "[1, 2 * 2, 3 / 3]";
+
+        let lexer = Lexer::new(input.to_owned());
+        let mut parser = Parser::new(lexer);
+
+        let program = parser.parse_program();
+        check_parser_errors(&parser);
+
+        assert_eq!(
+            program.statements,
+            vec![Statement::Expression(Expression::Array(vec![
+                Expression::IntegerLiteral(1),
+                Expression::Infix(
+                    Box::new(Expression::IntegerLiteral(2)),
+                    Infix::Asterisk,
+                    Box::new(Expression::IntegerLiteral(2))
+                ),
+                Expression::Infix(
+                    Box::new(Expression::IntegerLiteral(3)),
+                    Infix::Slash,
+                    Box::new(Expression::IntegerLiteral(3))
+                )
+            ]))]
+        )
+    }
+
+    #[test]
+    fn parsing_index_expression() {
+        let input = "arr[1 + 2]";
+
+        let lexer = Lexer::new(input.to_owned());
+        let mut parser = Parser::new(lexer);
+
+        let program = parser.parse_program();
+        check_parser_errors(&parser);
+
+        assert_eq!(
+            program.statements,
+            vec![Statement::Expression(Expression::Index(
+                Box::new(Expression::Identifier(String::from("arr"))),
+                Box::new(Expression::Infix(
+                    Box::new(Expression::IntegerLiteral(1)),
+                    Infix::Plus,
+                    Box::new(Expression::IntegerLiteral(2))
+                )),
             ))]
         )
     }

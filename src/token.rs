@@ -36,6 +36,8 @@ pub enum Token {
     // Delimiters
     Lparen,
     Rparen,
+    Lbracket,
+    Rbracket,
     Lbrace,
     Rbrace,
     Comma,
@@ -69,6 +71,8 @@ impl Display for Token {
             Token::Semicolon => write!(f, "Semicolon"),
             Token::Lparen => write!(f, "Lparen"),
             Token::Rparen => write!(f, "Rparen"),
+            Token::Lbracket => write!(f, "Lbracket"),
+            Token::Rbracket => write!(f, "Rbracket"),
             Token::Lbrace => write!(f, "Lbrace"),
             Token::Rbrace => write!(f, "Rbrace"),
             Token::Function => write!(f, "Function"),

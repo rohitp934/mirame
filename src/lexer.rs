@@ -105,6 +105,8 @@ impl Lexer {
             b')' => Token::Rparen,
             b'{' => Token::Lbrace,
             b'}' => Token::Rbrace,
+            b'[' => Token::Lbracket,
+            b']' => Token::Rbracket,
             b'"' => Token::String(self.read_string()),
             b'a'..=b'z' | b'A'..=b'Z' | b'_' => {
                 let ident = self.read_identifier();
@@ -190,6 +192,7 @@ mod lexer_test {
         10 != 9;
         "foobar";
         "foo bar";
+        [1, 2, 3];
         "#;
 
         let mut lex = Lexer::new(input.into());
@@ -272,6 +275,14 @@ mod lexer_test {
             Token::Semicolon,
             Token::String(String::from("foo bar")),
             Token::Semicolon,
+            Token::Lbracket,
+            Token::Int(String::from("1")),
+            Token::Comma,
+            Token::Int(String::from("2")),
+            Token::Comma,
+            Token::Int(String::from("3")),
+            Token::Rbracket,
+            Token::Semicolon,
             Token::Eof,
         ];
 
@@ -281,6 +292,6 @@ mod lexer_test {
             assert_eq!(token, next_token);
         }
 
-        return Ok(());
+        Ok(())
     }
 }
