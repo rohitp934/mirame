@@ -1,6 +1,7 @@
 // src/object.rs
 #![allow(dead_code)]
 
+pub mod builtins;
 pub mod env;
 
 use crate::ast::{BlockStatement, Infix, Prefix};
@@ -10,6 +11,7 @@ use std::{cell::RefCell, rc::Rc};
 use self::env::Env;
 
 pub type EvalResult = Result<Object, EvalError>;
+pub type BuiltinFunction = fn(Vec<Object>) -> EvalResult;
 
 #[derive(Debug, Clone)]
 pub enum Object {
@@ -19,6 +21,7 @@ pub enum Object {
     Null,
     ReturnValue(Box<Object>),
     Function(Vec<String>, BlockStatement, Rc<RefCell<Env>>),
+    Builtin(BuiltinFunction),
     Array(Vec<Object>),
 }
 
@@ -33,6 +36,7 @@ impl fmt::Display for Object {
             Object::Function(args, body, _) => {
                 write!(f, "fn({}) {{\n{}\n}}", args.join(", "), body)
             }
+            Object::Builtin(_) => write!(f, "builtin function"),
             Object::Array(elements) => {
                 let values = elements
                     .iter()
@@ -54,6 +58,7 @@ impl Object {
             Object::Null => "NULL",
             Object::ReturnValue(_) => "RETURN_VALUE",
             Object::Function(_, _, _) => "FUNCTION",
+            Object::Builtin(_) => "BUILTIN_FUNCTION",
             Object::Array(_) => "ARRAY",
         }
     }
@@ -73,6 +78,7 @@ pub enum EvalError {
     UnknownPrefixOperator(Prefix, Object),
     UnknownInfixOperator(Object, Infix, Object),
     UnknownIndexOperator(Object, Object),
+    UnsupportedArgs(String, Vec<Object>),
     IdentifierNotFound(String),
     NotCallable(Object),
     WrongArgCount { expected: usize, got: usize },
@@ -105,6 +111,15 @@ impl fmt::Display for EvalError {
                 "unknown index operator: {}[{}]",
                 left.obj_type(),
                 index.obj_type()
+            ),
+            EvalError::UnsupportedArgs(builtin, args) => write!(
+                f,
+                "unknown args for builtin function: {}({})",
+                builtin,
+                args.iter()
+                    .map(|a| a.obj_type())
+                    .collect::<Vec<&str>>()
+                    .join(", ")
             ),
             EvalError::IdentifierNotFound(ident) => write!(f, "identifier not found: {}", ident),
             EvalError::NotCallable(function) => {

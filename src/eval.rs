@@ -2,7 +2,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use crate::{
     ast::{BlockStatement, Expression, Infix, Prefix, Program, Statement},
-    object::{assert_arg_count, env::Env, EvalError, EvalResult, Object},
+    object::{assert_arg_count, builtins, env::Env, EvalError, EvalResult, Object},
 };
 
 pub fn eval(program: &Program, env: Rc<RefCell<Env>>) -> EvalResult {
@@ -160,6 +160,9 @@ fn eval_identifier(ident: &str, env: Rc<RefCell<Env>>) -> EvalResult {
     if let Some(obj) = env.borrow().get(ident) {
         return Ok(obj.clone());
     }
+    if let Some(obj) = builtins::lookup(ident) {
+        return Ok(obj);
+    }
 
     Err(EvalError::IdentifierNotFound(ident.to_string()))
 }
@@ -210,6 +213,7 @@ fn apply_function(func: Object, args: Vec<Object>) -> EvalResult {
             let evaluated = eval_block_statement(&body, new_env)?;
             unwrap_return_value(evaluated)
         }
+        Object::Builtin(func) => func(args),
         _ => Err(EvalError::NotCallable(func.clone())),
     }
 }
@@ -407,6 +411,24 @@ mod eval_tests {
             ),
             ("[1, 2, 3][3]", "null"),
             ("[1, 2, 3][-1]", "null"),
+        ]);
+    }
+
+    #[test]
+    fn builtin_function() {
+        expect_values(vec![
+            (r#"len("")"#, "0"),
+            (r#"len("four")"#, "4"),
+            (r#"len("hello world")"#, "11"),
+            ("len([1, 2, 3])", "3"),
+            ("len([])", "0"),
+        ]);
+        expect_errors(vec![
+            ("len(1)", "unknown args for builtin function: len(INTEGER)"),
+            (
+                r#"len("one", "two")"#,
+                "wrong number of args: expected 1, got 2",
+            ),
         ]);
     }
 
