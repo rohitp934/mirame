@@ -121,9 +121,26 @@ impl Lexer {
                     _ => Token::Identifier(ident),
                 };
             }
-            b'0'..=b'9' => return Token::Int(self.read_number()),
             0 => Token::Eof,
-            _ => unreachable!("Mirame programs should not contain these chars."),
+            _ => {
+                if is_digit(self.ch) {
+                    let integer_part = self.read_number().to_string();
+                    if self.ch == b'.' {
+                        self.read_char();
+                        if is_digit(self.ch) {
+                            return Token::Float(format!(
+                                "{}.{}",
+                                integer_part,
+                                self.read_number()
+                            ));
+                        }
+                        return Token::Float(format!("{}.0", integer_part));
+                    }
+                    return Token::Int(integer_part);
+                } else {
+                    Token::Illegal
+                }
+            }
         };
 
         self.read_char();
@@ -167,6 +184,10 @@ impl Lexer {
     }
 }
 
+fn is_digit(ch: u8) -> bool {
+    ch.is_ascii_digit()
+}
+
 #[cfg(test)]
 mod lexer_test {
     use super::*;
@@ -175,11 +196,11 @@ mod lexer_test {
     #[test]
     fn test_next_token() -> anyhow::Result<()> {
         let input = r#"let five = 5;
-            let ten = 10;
-            let add = fn(x, y) {
-                x + y;
-            };
-            let result = add(five, ten);
+        let ten = 10;
+        let add = fn(x, y) {
+            x + y;
+        };
+        let result = add(five, ten);
         !-/*5;
         5 < 10 > 5;
         if (5 < 10) {
@@ -193,6 +214,8 @@ mod lexer_test {
         "foobar";
         "foo bar";
         [1, 2, 3];
+        5.5;
+        1.;
         "#;
 
         let mut lex = Lexer::new(input.into());
@@ -282,6 +305,10 @@ mod lexer_test {
             Token::Comma,
             Token::Int(String::from("3")),
             Token::Rbracket,
+            Token::Semicolon,
+            Token::Float(String::from("5.5")),
+            Token::Semicolon,
+            Token::Float(String::from("1.0")),
             Token::Semicolon,
             Token::Eof,
         ];

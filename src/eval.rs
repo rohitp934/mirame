@@ -52,6 +52,7 @@ fn eval_block_statement(block: &BlockStatement, env: Rc<RefCell<Env>>) -> EvalRe
 fn eval_expression(exp: &Expression, env: Rc<RefCell<Env>>) -> EvalResult {
     match exp {
         Expression::IntegerLiteral(val) => Ok(Object::Integer(*val)),
+        Expression::FloatLiteral(val) => Ok(Object::Float(*val)),
         Expression::StringLiteral(val) => Ok(Object::String(val.clone())),
         Expression::Bool(val) => Ok(Object::Bool(*val)),
         Expression::Prefix(prefix, exp) => eval_prefix_exp(prefix, exp.as_ref(), env),
@@ -83,14 +84,17 @@ fn eval_prefix_exp(prefix: &Prefix, exp: &Expression, env: Rc<RefCell<Env>>) -> 
         Prefix::Bang => Ok(Object::Bool(!obj.is_truthy())),
         Prefix::Minus => match obj {
             Object::Integer(val) => Ok(Object::Integer(-val)),
+            Object::Float(val) => Ok(Object::Float(-val)),
             _ => Err(EvalError::UnknownPrefixOperator(prefix.clone(), obj)),
         },
         Prefix::Inc => match obj {
             Object::Integer(val) => Ok(Object::Integer(val + 1)),
+            Object::Float(val) => Ok(Object::Float(val + 1.0)),
             _ => Err(EvalError::UnknownPrefixOperator(prefix.clone(), obj)),
         },
         Prefix::Dec => match obj {
             Object::Integer(val) => Ok(Object::Integer(val - 1)),
+            Object::Float(val) => Ok(Object::Float(val - 1.0)),
             _ => Err(EvalError::UnknownPrefixOperator(prefix.clone(), obj)),
         },
     }
@@ -109,6 +113,13 @@ fn eval_infix_exp(
         (Object::Bool(left), Object::Bool(right)) => eval_boolean_infix_exp(left, infix, right),
         (Object::Integer(left), Object::Integer(right)) => {
             eval_integer_infix_exp(left, infix, right)
+        }
+        (Object::Float(left), Object::Float(right)) => eval_float_infix_exp(left, infix, right),
+        (Object::Float(left), Object::Integer(right)) => {
+            eval_float_infix_exp(left, infix, right as f64)
+        }
+        (Object::Integer(left), Object::Float(right)) => {
+            eval_float_infix_exp(left as f64, infix, right)
         }
         (Object::String(left), Object::String(right)) => eval_string_infix_exp(left, infix, right),
         (left, right) => Err(EvalError::TypeMismatch(left, infix.clone(), right)),
@@ -185,6 +196,21 @@ fn eval_integer_infix_exp(left: i64, infix: &Infix, right: i64) -> EvalResult {
         Infix::Minus => Ok(Object::Integer(left - right)),
         Infix::Asterisk => Ok(Object::Integer(left * right)),
         Infix::Slash => Ok(Object::Integer(left / right)),
+        Infix::Eq => Ok(Object::Bool(left == right)),
+        Infix::Neq => Ok(Object::Bool(left != right)),
+        Infix::Leq => Ok(Object::Bool(left <= right)),
+        Infix::Geq => Ok(Object::Bool(left >= right)),
+        Infix::Lt => Ok(Object::Bool(left < right)),
+        Infix::Gt => Ok(Object::Bool(left > right)),
+    }
+}
+
+fn eval_float_infix_exp(left: f64, infix: &Infix, right: f64) -> EvalResult {
+    match infix {
+        Infix::Plus => Ok(Object::Float(left + right)),
+        Infix::Minus => Ok(Object::Float(left - right)),
+        Infix::Asterisk => Ok(Object::Float(left * right)),
+        Infix::Slash => Ok(Object::Float(left / right)),
         Infix::Eq => Ok(Object::Bool(left == right)),
         Infix::Neq => Ok(Object::Bool(left != right)),
         Infix::Leq => Ok(Object::Bool(left <= right)),
@@ -288,6 +314,24 @@ mod eval_tests {
             ("5 / 5", "1"),
             ("100 + 100 - 200", "0"),
             ("5 * (3 + 2)", "25"),
+        ])
+    }
+
+    #[test]
+    fn eval_float() {
+        expect_values(vec![
+            ("5.0", "5"),
+            ("10.0", "10"),
+            // Prefix
+            ("-1.5", "-1.5"),
+            ("-10.0", "-10"),
+            // Infix
+            ("5.0 + 5.0", "10"),
+            ("5.0 - 5.0", "0"),
+            ("5.0 * 5.0", "25"),
+            ("5.0 / 5.0", "1"),
+            ("100.0 + 100.0 - 200.0", "0"),
+            ("5.0 * (3.0 + 2.0)", "25"),
         ])
     }
 

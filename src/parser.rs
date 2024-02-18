@@ -30,6 +30,7 @@ pub enum ParserError {
     ExpectedAssign(Token),
     ExpectedIdent(Token),
     ExpectedInt(Token),
+    ExpectedFloat(Token),
     ExpectedString(Token),
     ExpectedBoolToken(Token),
     ExpectedPrefixToken(Token),
@@ -40,6 +41,7 @@ pub enum ParserError {
     ExpectedLbracket(Token),
     ExpectedRbracket(Token),
     ParseInt(String),
+    ParseFloat(String),
 }
 
 type Result<T> = std::result::Result<T, ParserError>;
@@ -195,6 +197,7 @@ impl Parser {
         match &self.curr_token {
             Token::Identifier(_) => Some(Parser::parse_ident),
             Token::Int(_) => Some(Parser::parse_integer_literal),
+            Token::Float(_) => Some(Parser::parse_float_literal),
             Token::String(_) => Some(Parser::parse_string_literal),
             Token::True => Some(Parser::parse_bool),
             Token::False => Some(Parser::parse_bool),
@@ -256,6 +259,17 @@ impl Parser {
             }
         } else {
             Err(ParserError::ExpectedInt(self.curr_token.clone()))
+        }
+    }
+
+    fn parse_float_literal(&mut self) -> Result<Expression> {
+        if let Token::Float(float) = &self.curr_token {
+            match float.parse::<f64>() {
+                Ok(val) => Ok(Expression::FloatLiteral(val)),
+                Err(_) => Err(ParserError::ParseFloat(float.to_string())),
+            }
+        } else {
+            Err(ParserError::ExpectedFloat(self.curr_token.clone()))
         }
     }
 
@@ -566,6 +580,22 @@ mod tests {
             vec![Statement::Expression(Expression::StringLiteral(
                 "hello world".to_string()
             ))]
+        )
+    }
+
+    #[test]
+    fn float_expression() {
+        let input = "5.5;";
+
+        let lexer = Lexer::new(input.to_owned());
+        let mut parser = Parser::new(lexer);
+
+        let program = parser.parse_program();
+        check_parser_errors(&parser);
+
+        assert_eq!(
+            program.statements,
+            vec![Statement::Expression(Expression::FloatLiteral(5.5))]
         )
     }
 
