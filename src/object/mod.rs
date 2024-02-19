@@ -6,7 +6,7 @@ pub mod env;
 
 use crate::ast::{BlockStatement, Infix, Prefix};
 use core::fmt;
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use self::env::Env;
 
@@ -24,6 +24,7 @@ pub enum Object {
     Function(Vec<String>, BlockStatement, Rc<RefCell<Env>>),
     Builtin(BuiltinFunction),
     Array(Vec<Object>),
+    Hash(HashMap<HashKey, Object>),
 }
 
 impl fmt::Display for Object {
@@ -47,6 +48,14 @@ impl fmt::Display for Object {
                     .join(", ");
                 write!(f, "[{}]", values)
             }
+            Object::Hash(pairs) => {
+                let mut items = pairs
+                    .iter()
+                    .map(|(k, v)| format!("{}: {}", k, v))
+                    .collect::<Vec<String>>();
+                items.sort();
+                write!(f, "{{{}}}", items.join(", "))
+            }
         }
     }
 }
@@ -63,6 +72,7 @@ impl Object {
             Object::Function(_, _, _) => "FUNCTION",
             Object::Builtin(_) => "BUILTIN_FUNCTION",
             Object::Array(_) => "ARRAY",
+            Object::Hash(_) => "HASH",
         }
     }
 
@@ -71,6 +81,34 @@ impl Object {
             Object::Bool(val) => *val,
             Object::Null => false,
             _ => true,
+        }
+    }
+}
+
+#[derive(PartialEq, Eq, Hash, Clone, Debug)]
+pub enum HashKey {
+    Integer(i64),
+    Bool(bool),
+    String(String),
+}
+
+impl fmt::Display for HashKey {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            HashKey::Integer(i) => write!(f, "{}", i),
+            HashKey::Bool(b) => write!(f, "{}", b),
+            HashKey::String(s) => write!(f, "\"{}\"", s),
+        }
+    }
+}
+
+impl HashKey {
+    pub fn from_object(obj: &Object) -> Result<HashKey, EvalError> {
+        match obj {
+            Object::Integer(val) => Ok(HashKey::Integer(*val)),
+            Object::Bool(val) => Ok(HashKey::Bool(*val)),
+            Object::String(val) => Ok(HashKey::String(val.to_string())),
+            _ => Err(EvalError::UnsupportedHashKey(obj.clone())),
         }
     }
 }
@@ -85,6 +123,7 @@ pub enum EvalError {
     IdentifierNotFound(String),
     NotCallable(Object),
     WrongArgCount { expected: usize, got: usize },
+    UnsupportedHashKey(Object),
 }
 
 impl fmt::Display for EvalError {
@@ -115,6 +154,9 @@ impl fmt::Display for EvalError {
                 left.obj_type(),
                 index.obj_type()
             ),
+            EvalError::UnsupportedHashKey(key) => {
+                write!(f, "unusable as hashkey: {}", key.obj_type())
+            }
             EvalError::UnsupportedArgs(builtin, args) => write!(
                 f,
                 "unknown args for builtin function: {}({})",

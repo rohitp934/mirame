@@ -42,6 +42,7 @@ pub enum Token {
     Rbrace,
     Comma,
     Semicolon,
+    Colon,
 }
 
 impl Display for Token {
@@ -69,6 +70,7 @@ impl Display for Token {
             Token::Dec => write!(f, "Decrement"),
             Token::Comma => write!(f, "Comma"),
             Token::Semicolon => write!(f, "Semicolon"),
+            Token::Colon => write!(f, "Colon"),
             Token::Lparen => write!(f, "Lparen"),
             Token::Rparen => write!(f, "Rparen"),
             Token::Lbracket => write!(f, "Lbracket"),

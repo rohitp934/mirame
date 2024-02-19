@@ -56,6 +56,7 @@ pub enum Expression {
     FloatLiteral(f64),
     StringLiteral(String),
     Array(Vec<Expression>),
+    Hash(Vec<(Expression, Expression)>),
     Index(Box<Expression>, Box<Expression>),
     Bool(bool),
     Prefix(Prefix, Box<Expression>),
@@ -73,6 +74,13 @@ impl fmt::Display for Expression {
             Expression::FloatLiteral(val) => write!(f, "{}", val),
             Expression::StringLiteral(val) => write!(f, "{}", val),
             Expression::Array(elements) => write!(f, "[{}]", comma_separated_print(elements)),
+            Expression::Hash(pairs) => {
+                let items = pairs
+                    .iter()
+                    .map(|(k, v)| format!("{}: {}", k, v))
+                    .collect::<Vec<String>>();
+                write!(f, "{{{}}}", items.join(", "))
+            }
             Expression::Index(left, index) => write!(f, "{}[{}]", left, index),
             Expression::Bool(val) => write!(f, "{}", val),
             Expression::Prefix(op, exp) => write!(f, "({}{})", op, exp),

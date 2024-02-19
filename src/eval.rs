@@ -1,8 +1,8 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use crate::{
     ast::{BlockStatement, Expression, Infix, Prefix, Program, Statement},
-    object::{assert_arg_count, builtins, env::Env, EvalError, EvalResult, Object},
+    object::{assert_arg_count, builtins, env::Env, EvalError, EvalResult, HashKey, Object},
 };
 
 pub fn eval(program: &Program, env: Rc<RefCell<Env>>) -> EvalResult {
@@ -73,6 +73,7 @@ fn eval_expression(exp: &Expression, env: Rc<RefCell<Env>>) -> EvalResult {
         }
         Expression::Array(elements) => eval_array_literal(elements, env),
         Expression::Index(left, index) => eval_index_exp(left, index, env),
+        Expression::Hash(pairs) => eval_hash_literal(pairs, env),
         _ => todo!(),
     }
 }
@@ -155,8 +156,31 @@ fn eval_index_exp(left: &Expression, index: &Expression, env: Rc<RefCell<Env>>) 
         (Object::Array(array), Object::Integer(val)) => {
             Ok(array.get(val as usize).cloned().unwrap_or(Object::Null))
         }
+        (Object::Hash(pairs), Object::Integer(val)) => Ok(pairs
+            .get(&HashKey::Integer(val))
+            .cloned()
+            .unwrap_or(Object::Null)),
+        (Object::Hash(pairs), Object::Bool(val)) => Ok(pairs
+            .get(&HashKey::Bool(val))
+            .cloned()
+            .unwrap_or(Object::Null)),
+        (Object::Hash(pairs), Object::String(val)) => Ok(pairs
+            .get(&HashKey::String(val))
+            .cloned()
+            .unwrap_or(Object::Null)),
         (l, i) => Err(EvalError::UnknownIndexOperator(l, i)),
     }
+}
+
+fn eval_hash_literal(pairs: &[(Expression, Expression)], env: Rc<RefCell<Env>>) -> EvalResult {
+    let mut map = HashMap::new();
+    for (k, v) in pairs {
+        let key = eval_expression(k, env.clone())?;
+        let value = eval_expression(v, env.clone())?;
+        let hash_key = HashKey::from_object(&key)?;
+        map.insert(hash_key, value);
+    }
+    Ok(Object::Hash(map))
 }
 
 fn eval_expressions(exps: &[Expression], env: Rc<RefCell<Env>>) -> Result<Vec<Object>, EvalError> {
@@ -455,6 +479,20 @@ mod eval_tests {
             ),
             ("[1, 2, 3][3]", "null"),
             ("[1, 2, 3][-1]", "null"),
+        ]);
+    }
+
+    #[test]
+    fn test_hash_literal() {
+        expect_values(vec![
+            (r#"{"foo": 123, "bar": 234}"#, r#"{"bar": 234, "foo": 123}"#),
+            (r#"{"foo": 123, "bar": 234}["baz"]"#, "null"),
+            (r#"{"foo": 123, "bar": 234}["foo"]"#, "123"),
+            (r#"{1: 123, 2: 234}[2]"#, "234"),
+            (r#"{true: 3 * 4, false: 2 * 8}[true]"#, "12"),
+            (r#"{true: 3 * 4, false: 2 * 8}[false]"#, "16"),
+            (r#"{"thr" + "ee": 6 / 2, 1: 1}["th" + "ree"]"#, "3"),
+            (r#"let key = "foo"; {"foo": 5}[key]"#, "5"),
         ]);
     }
 

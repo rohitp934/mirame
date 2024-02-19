@@ -23,6 +23,7 @@ fn builtins() -> HashMap<&'static str, Builtin> {
         ("last", builtin!(last)),
         ("tail", builtin!(tail)),
         ("push", builtin!(push)),
+        ("print", builtin!(print)),
     ])
 }
 
@@ -84,4 +85,12 @@ pub fn push(args: Vec<Object>) -> EvalResult {
         }
         _ => Err(EvalError::UnsupportedArgs("push".to_string(), args)),
     }
+}
+
+pub fn print(args: Vec<Object>) -> EvalResult {
+    for arg in args {
+        println!("{}", arg);
+    }
+
+    Ok(Object::Null)
 }

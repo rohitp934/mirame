@@ -101,6 +101,7 @@ impl Lexer {
             }
             b',' => Token::Comma,
             b';' => Token::Semicolon,
+            b':' => Token::Colon,
             b'(' => Token::Lparen,
             b')' => Token::Rparen,
             b'{' => Token::Lbrace,
@@ -216,6 +217,7 @@ mod lexer_test {
         [1, 2, 3];
         5.5;
         1.;
+        {"foo": "bar"};
         "#;
 
         let mut lex = Lexer::new(input.into());
@@ -309,6 +311,12 @@ mod lexer_test {
             Token::Float(String::from("5.5")),
             Token::Semicolon,
             Token::Float(String::from("1.0")),
+            Token::Semicolon,
+            Token::Lbrace,
+            Token::String(String::from("foo")),
+            Token::Colon,
+            Token::String(String::from("bar")),
+            Token::Rbrace,
             Token::Semicolon,
             Token::Eof,
         ];

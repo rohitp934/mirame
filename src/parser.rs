@@ -40,6 +40,8 @@ pub enum ParserError {
     ExpectedLbrace(Token),
     ExpectedLbracket(Token),
     ExpectedRbracket(Token),
+    ExpectedComma(Token),
+    ExpectedColon(Token),
     ParseInt(String),
     ParseFloat(String),
 }
@@ -209,6 +211,7 @@ impl Parser {
             Token::If => Some(Parser::parse_if_exp),
             Token::Function => Some(Parser::parse_function),
             Token::Lbracket => Some(Parser::parse_array_literal),
+            Token::Lbrace => Some(Parser::parse_hash_literal),
             _ => None,
         }
     }
@@ -358,6 +361,32 @@ impl Parser {
         // curr_token = ]
 
         Ok(Expression::Index(Box::new(array), Box::new(elements)))
+    }
+
+    fn parse_hash_literal(&mut self) -> Result<Expression> {
+        let mut pairs = vec![];
+
+        while self.peek_token != Token::Rbrace {
+            self.next_token();
+
+            let key = self.parse_expression(Precedence::Lowest)?;
+
+            self.expect_peek(Token::Colon, ParserError::ExpectedColon)?;
+
+            self.next_token();
+
+            let value = self.parse_expression(Precedence::Lowest)?;
+
+            pairs.push((key, value));
+
+            if self.peek_token != Token::Rbrace {
+                self.expect_peek(Token::Comma, ParserError::ExpectedComma)?;
+            }
+        }
+
+        self.expect_peek(Token::Rbrace, ParserError::ExpectedComma)?;
+
+        Ok(Expression::Hash(pairs))
     }
 
     fn parse_call_exp(&mut self, function: Expression) -> Result<Expression> {
@@ -622,6 +651,32 @@ mod tests {
                     Box::new(Expression::IntegerLiteral(3)),
                     Infix::Slash,
                     Box::new(Expression::IntegerLiteral(3))
+                )
+            ]))]
+        )
+    }
+
+    #[test]
+    fn parse_hash_literal_string_keys() {
+        let input = r#"{"one": 1, "two": 2, "three": 3}"#;
+        let lexer = Lexer::new(input.to_owned());
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
+        check_parser_errors(&parser);
+        assert_eq!(
+            program.statements,
+            vec![Statement::Expression(Expression::Hash(vec![
+                (
+                    Expression::StringLiteral("one".to_string()),
+                    Expression::IntegerLiteral(1)
+                ),
+                (
+                    Expression::StringLiteral("two".to_string()),
+                    Expression::IntegerLiteral(2)
+                ),
+                (
+                    Expression::StringLiteral("three".to_string()),
+                    Expression::IntegerLiteral(3)
                 )
             ]))]
         )
